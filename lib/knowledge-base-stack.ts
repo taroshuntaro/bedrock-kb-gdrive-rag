@@ -67,7 +67,7 @@ export class KnowledgeBaseStack extends Stack {
     }));
     kbRole.addToPolicy(new iam.PolicyStatement({
       actions: ['s3vectors:*'],
-      resources: [vectorIndex.attrIndexArn],
+      resources: [vectorBucket.attrVectorBucketArn, vectorIndex.attrIndexArn],
     }));
     this.kbRole = kbRole;
   }
