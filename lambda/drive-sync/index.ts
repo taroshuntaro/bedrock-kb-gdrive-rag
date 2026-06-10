@@ -81,11 +81,18 @@ export async function handler(): Promise<{ uploaded: number; deleted: number; in
     await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   }
 
-  // ingestion ガード
-  const jobs = await bedrock.send(new ListIngestionJobsCommand({
-    knowledgeBaseId: kbId, dataSourceId,
-  }));
-  const statuses = (jobs.ingestionJobSummaries ?? []).map((j) => j.status as string);
+  // ingestion ガード(全ページのジョブ状態を収集)
+  const statuses: string[] = [];
+  let jobToken: string | undefined;
+  do {
+    const jobs = await bedrock.send(new ListIngestionJobsCommand({
+      knowledgeBaseId: kbId, dataSourceId, nextToken: jobToken,
+    }));
+    for (const j of jobs.ingestionJobSummaries ?? []) {
+      statuses.push(j.status as string);
+    }
+    jobToken = jobs.nextToken;
+  } while (jobToken);
   let ingestion = false;
   if (shouldStartIngestion(diff.hasChanges, statuses)) {
     await bedrock.send(new StartIngestionJobCommand({ knowledgeBaseId: kbId, dataSourceId }));
