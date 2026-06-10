@@ -73,7 +73,7 @@ export async function handler(): Promise<{ uploaded: number; deleted: number; in
     if (!content) continue;
     await s3.send(new PutObjectCommand({
       Bucket: bucket, Key: up.key, Body: content.body,
-      Metadata: { [MODIFIED_META]: up.modifiedTime, 'drive-file-id': file.fileId, 'drive-path': file.path },
+      Metadata: { [MODIFIED_META]: up.modifiedTime, 'drive-file-id': file.fileId, 'drive-path': encodeURIComponent(file.path) },
     }));
   }
   // 削除

@@ -15,5 +15,3 @@ export const NON_FILTERABLE_METADATA_KEYS = [
   'AMAZON_BEDROCK_TEXT',
   'AMAZON_BEDROCK_METADATA',
 ];
-
-export const DEFAULT_SCHEDULE_RATE = 'rate(1 day)';
