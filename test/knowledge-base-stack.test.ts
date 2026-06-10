@@ -19,6 +19,9 @@ test('S3 Vectors インデックスが 1024 次元/float32/cosine で作られ�
     Dimension: 1024,
     DataType: 'float32',
     DistanceMetric: 'cosine',
+    MetadataConfiguration: {
+      NonFilterableMetadataKeys: ['AMAZON_BEDROCK_TEXT', 'AMAZON_BEDROCK_METADATA'],
+    },
   });
   t.resourceCountIs('AWS::S3Vectors::VectorBucket', 1);
 });
