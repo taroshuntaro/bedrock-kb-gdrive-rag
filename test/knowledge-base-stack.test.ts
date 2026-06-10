@@ -83,3 +83,8 @@ test('データソースが S3 + Fixed-size chunking を使う', () => {
     }),
   }));
 });
+
+test('SA 用シークレットが作られる', () => {
+  const t = synth();
+  t.resourceCountIs('AWS::SecretsManager::Secret', 1);
+});

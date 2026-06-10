@@ -3,6 +3,7 @@ import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3vectors from 'aws-cdk-lib/aws-s3vectors';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 import {
   EMBEDDING_DIMENSION,
@@ -28,6 +29,7 @@ export class KnowledgeBaseStack extends Stack {
   public readonly kbRole: iam.Role;
   public readonly knowledgeBase: bedrock.CfnKnowledgeBase;
   public readonly dataSource: bedrock.CfnDataSource;
+  public readonly saSecret: secretsmanager.Secret;
 
   constructor(scope: Construct, id: string, props: KnowledgeBaseStackProps) {
     super(scope, id, props);
@@ -121,5 +123,11 @@ export class KnowledgeBaseStack extends Stack {
       },
     });
     this.dataSource = dataSource;
+
+    const saSecret = new secretsmanager.Secret(this, 'DriveSaSecret', {
+      secretName: `${NAME_PREFIX}-drive-sa`,
+      description: 'Google service account JSON key for Drive sync (値はデプロイ後に手動投入)',
+    });
+    this.saSecret = saSecret;
   }
 }
