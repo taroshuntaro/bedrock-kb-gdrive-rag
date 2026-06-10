@@ -1,5 +1,5 @@
 node_modules/
 cdk.out/
-*.js
-*.d.ts
+dist/
 .cdk.staging/
+*.d.ts

@@ -1,0 +1,8 @@
+{
+  "app": "npx ts-node --prefer-ts-exts bin/app.ts",
+  "context": {
+    "driveFolderId": "",
+    "scheduleRate": "rate(1 day)",
+    "scheduleEnabled": "true"
+  }
+}
