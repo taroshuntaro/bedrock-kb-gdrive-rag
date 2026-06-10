@@ -13,6 +13,16 @@ function synth() {
   return Template.fromStack(stack);
 }
 
+test('S3 Vectors インデックスが 1024 次元/float32/cosine で作られる', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::S3Vectors::Index', {
+    Dimension: 1024,
+    DataType: 'float32',
+    DistanceMetric: 'cosine',
+  });
+  t.resourceCountIs('AWS::S3Vectors::VectorBucket', 1);
+});
+
 test('ドキュメントバケットがバージョニング・暗号化・パブリックアクセスブロックを持つ', () => {
   const t = synth();
   t.hasResourceProperties('AWS::S3::Bucket', {
