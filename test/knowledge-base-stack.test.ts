@@ -88,3 +88,15 @@ test('SA 用シークレットが作られる', () => {
   const t = synth();
   t.resourceCountIs('AWS::SecretsManager::Secret', 1);
 });
+
+test('同期 Lambda が Node.js で環境変数を持つ', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::Lambda::Function', Match.objectLike({
+    Runtime: Match.stringLikeRegexp('nodejs'),
+    Environment: Match.objectLike({
+      Variables: Match.objectLike({
+        DRIVE_FOLDER_ID: 'folder-123',
+      }),
+    }),
+  }));
+});

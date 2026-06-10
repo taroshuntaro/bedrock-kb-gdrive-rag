@@ -1,9 +1,12 @@
-import { Stack, StackProps, RemovalPolicy } from 'aws-cdk-lib';
+import { Stack, StackProps, RemovalPolicy, Duration } from 'aws-cdk-lib';
 import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3vectors from 'aws-cdk-lib/aws-s3vectors';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as lambdaNode from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as path from 'path';
 import { Construct } from 'constructs';
 import {
   EMBEDDING_DIMENSION,
@@ -30,6 +33,7 @@ export class KnowledgeBaseStack extends Stack {
   public readonly knowledgeBase: bedrock.CfnKnowledgeBase;
   public readonly dataSource: bedrock.CfnDataSource;
   public readonly saSecret: secretsmanager.Secret;
+  public readonly syncFn: lambdaNode.NodejsFunction;
 
   constructor(scope: Construct, id: string, props: KnowledgeBaseStackProps) {
     super(scope, id, props);
@@ -129,5 +133,32 @@ export class KnowledgeBaseStack extends Stack {
       description: 'Google service account JSON key for Drive sync (値はデプロイ後に手動投入)',
     });
     this.saSecret = saSecret;
+
+    const syncFn = new lambdaNode.NodejsFunction(this, 'DriveSyncFunction', {
+      entry: path.join(__dirname, '../lambda/drive-sync/index.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      timeout: Duration.minutes(15),
+      memorySize: 1024,
+      environment: {
+        DOCS_BUCKET: docsBucket.bucketName,
+        DRIVE_FOLDER_ID: props.driveFolderId,
+        KNOWLEDGE_BASE_ID: knowledgeBase.attrKnowledgeBaseId,
+        DATA_SOURCE_ID: dataSource.attrDataSourceId,
+        SA_SECRET_ARN: saSecret.secretArn,
+      },
+      bundling: { minify: true, target: 'node20' },
+    });
+
+    docsBucket.grantReadWrite(syncFn);
+    saSecret.grantRead(syncFn);
+    syncFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['bedrock:StartIngestionJob', 'bedrock:ListIngestionJobs'],
+      resources: [
+        knowledgeBase.attrKnowledgeBaseArn,
+        `${knowledgeBase.attrKnowledgeBaseArn}/*`,
+      ],
+    }));
+    this.syncFn = syncFn;
   }
 }
