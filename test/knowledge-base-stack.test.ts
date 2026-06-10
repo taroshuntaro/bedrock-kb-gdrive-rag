@@ -54,3 +54,16 @@ test('KB ロールが bedrock の信頼ポリシーを持つ', () => {
     }),
   }));
 });
+
+test('KB が S3_VECTORS ストレージと Titan V2 埋め込みを使う', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::Bedrock::KnowledgeBase', Match.objectLike({
+    KnowledgeBaseConfiguration: Match.objectLike({
+      Type: 'VECTOR',
+      VectorKnowledgeBaseConfiguration: Match.objectLike({
+        EmbeddingModelArn: Match.stringLikeRegexp('titan-embed-text-v2'),
+      }),
+    }),
+    StorageConfiguration: Match.objectLike({ Type: 'S3_VECTORS' }),
+  }));
+});

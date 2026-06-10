@@ -1,4 +1,5 @@
 import { Stack, StackProps, RemovalPolicy } from 'aws-cdk-lib';
+import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3vectors from 'aws-cdk-lib/aws-s3vectors';
@@ -23,6 +24,7 @@ export class KnowledgeBaseStack extends Stack {
   public readonly vectorBucket: s3vectors.CfnVectorBucket;
   public readonly vectorIndex: s3vectors.CfnIndex;
   public readonly kbRole: iam.Role;
+  public readonly knowledgeBase: bedrock.CfnKnowledgeBase;
 
   constructor(scope: Construct, id: string, props: KnowledgeBaseStackProps) {
     super(scope, id, props);
@@ -70,5 +72,32 @@ export class KnowledgeBaseStack extends Stack {
       resources: [vectorBucket.attrVectorBucketArn, vectorIndex.attrIndexArn],
     }));
     this.kbRole = kbRole;
+
+    const knowledgeBase = new bedrock.CfnKnowledgeBase(this, 'KnowledgeBase', {
+      name: `${NAME_PREFIX}-kb`,
+      roleArn: kbRole.roleArn,
+      knowledgeBaseConfiguration: {
+        type: 'VECTOR',
+        vectorKnowledgeBaseConfiguration: {
+          embeddingModelArn: EMBEDDING_MODEL_ARN,
+          embeddingModelConfiguration: {
+            bedrockEmbeddingModelConfiguration: {
+              dimensions: EMBEDDING_DIMENSION,
+              embeddingDataType: 'FLOAT32',
+            },
+          },
+        },
+      },
+      storageConfiguration: {
+        type: 'S3_VECTORS',
+        s3VectorsConfiguration: {
+          vectorBucketArn: vectorBucket.attrVectorBucketArn,
+          indexArn: vectorIndex.attrIndexArn,
+        },
+      },
+    });
+    knowledgeBase.addDependency(vectorIndex);
+    knowledgeBase.node.addDependency(kbRole);
+    this.knowledgeBase = knowledgeBase;
   }
 }
