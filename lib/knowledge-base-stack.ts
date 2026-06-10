@@ -1,4 +1,4 @@
-import { Stack, StackProps, RemovalPolicy, Duration } from 'aws-cdk-lib';
+import { Stack, StackProps, RemovalPolicy, Duration, CfnOutput } from 'aws-cdk-lib';
 import * as bedrock from 'aws-cdk-lib/aws-bedrock';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -6,6 +6,8 @@ import * as s3vectors from 'aws-cdk-lib/aws-s3vectors';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as lambdaNode from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as path from 'path';
 import { Construct } from 'constructs';
 import {
@@ -160,5 +162,17 @@ export class KnowledgeBaseStack extends Stack {
       ],
     }));
     this.syncFn = syncFn;
+
+    new events.Rule(this, 'SyncSchedule', {
+      schedule: events.Schedule.expression(props.scheduleRate),
+      enabled: props.scheduleEnabled,
+      targets: [new targets.LambdaFunction(syncFn)],
+    });
+
+    new CfnOutput(this, 'KnowledgeBaseId', { value: knowledgeBase.attrKnowledgeBaseId });
+    new CfnOutput(this, 'DataSourceId', { value: dataSource.attrDataSourceId });
+    new CfnOutput(this, 'DocsBucketName', { value: docsBucket.bucketName });
+    new CfnOutput(this, 'SyncFunctionName', { value: syncFn.functionName });
+    new CfnOutput(this, 'SaSecretArn', { value: saSecret.secretArn });
   }
 }

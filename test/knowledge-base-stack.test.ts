@@ -100,3 +100,20 @@ test('同期 Lambda が Node.js で環境変数を持つ', () => {
     }),
   }));
 });
+
+test('スケジュールルールが Lambda をターゲットにする', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::Events::Rule', Match.objectLike({
+    ScheduleExpression: 'rate(1 day)',
+    State: 'ENABLED',
+  }));
+});
+
+test('主要 ID が CfnOutput される', () => {
+  const t = synth();
+  const outputs = t.findOutputs('*');
+  const keys = Object.keys(outputs);
+  expect(keys).toEqual(expect.arrayContaining([
+    'KnowledgeBaseId', 'DataSourceId', 'DocsBucketName', 'SyncFunctionName', 'SaSecretArn',
+  ]));
+});
