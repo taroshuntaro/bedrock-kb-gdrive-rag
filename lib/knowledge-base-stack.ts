@@ -11,6 +11,8 @@ import {
   VECTOR_DISTANCE_METRIC,
   NON_FILTERABLE_METADATA_KEYS,
   NAME_PREFIX,
+  CHUNK_MAX_TOKENS,
+  CHUNK_OVERLAP_PERCENT,
 } from './config';
 
 export interface KnowledgeBaseStackProps extends StackProps {
@@ -25,6 +27,7 @@ export class KnowledgeBaseStack extends Stack {
   public readonly vectorIndex: s3vectors.CfnIndex;
   public readonly kbRole: iam.Role;
   public readonly knowledgeBase: bedrock.CfnKnowledgeBase;
+  public readonly dataSource: bedrock.CfnDataSource;
 
   constructor(scope: Construct, id: string, props: KnowledgeBaseStackProps) {
     super(scope, id, props);
@@ -99,5 +102,24 @@ export class KnowledgeBaseStack extends Stack {
     knowledgeBase.addDependency(vectorIndex);
     knowledgeBase.node.addDependency(kbRole);
     this.knowledgeBase = knowledgeBase;
+
+    const dataSource = new bedrock.CfnDataSource(this, 'DataSource', {
+      name: `${NAME_PREFIX}-s3-source`,
+      knowledgeBaseId: knowledgeBase.attrKnowledgeBaseId,
+      dataSourceConfiguration: {
+        type: 'S3',
+        s3Configuration: { bucketArn: docsBucket.bucketArn },
+      },
+      vectorIngestionConfiguration: {
+        chunkingConfiguration: {
+          chunkingStrategy: 'FIXED_SIZE',
+          fixedSizeChunkingConfiguration: {
+            maxTokens: CHUNK_MAX_TOKENS,
+            overlapPercentage: CHUNK_OVERLAP_PERCENT,
+          },
+        },
+      },
+    });
+    this.dataSource = dataSource;
   }
 }

@@ -67,3 +67,19 @@ test('KB が S3_VECTORS ストレージと Titan V2 埋め込みを使う', () =
     StorageConfiguration: Match.objectLike({ Type: 'S3_VECTORS' }),
   }));
 });
+
+test('データソースが S3 + Fixed-size chunking を使う', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::Bedrock::DataSource', Match.objectLike({
+    DataSourceConfiguration: Match.objectLike({ Type: 'S3' }),
+    VectorIngestionConfiguration: Match.objectLike({
+      ChunkingConfiguration: Match.objectLike({
+        ChunkingStrategy: 'FIXED_SIZE',
+        FixedSizeChunkingConfiguration: {
+          MaxTokens: 300,
+          OverlapPercentage: 20,
+        },
+      }),
+    }),
+  }));
+});
