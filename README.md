@@ -40,12 +40,23 @@ npx cdk deploy -c driveFolderId=<対象フォルダID> \
    ```
 3. S3 への反映と ingestion job の起動を確認
 
-## テスト
+## 開発用コマンド
 
 ```bash
-npm test          # Jest 単体 + CDK assertion
-npx cdk synth     # テンプレート生成確認
+npm install              # 依存をインストール
+
+npm test                 # Jest 単体テスト + CDK assertion テスト
+npx tsc --noEmit         # 型チェック(ts-jest は transpile-only のためテストでは型検査しない)
+npm run build            # TypeScript を dist/ にコンパイル
+
+npx cdk synth            # CloudFormation テンプレートを生成して確認
+npx cdk diff   -c driveFolderId=<対象フォルダID>   # 既存スタックとの差分を確認
+npx cdk deploy -c driveFolderId=<対象フォルダID>   # デプロイ
+npx cdk destroy                                    # スタックを削除
 ```
+
+> メモ: 型安全は `npx tsc --noEmit` で担保している(`jest` は速度・メモリのため transpile-only)。
+> CI などでは `npm test` と `npx tsc --noEmit` を併用すること。
 
 ## スコープ外(将来)
 
