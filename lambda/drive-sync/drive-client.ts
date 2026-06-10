@@ -10,9 +10,14 @@ export interface RemoteFile {
 }
 
 export function createDrive(serviceAccountJson: string): drive_v3.Drive {
-  const creds = JSON.parse(serviceAccountJson);
+  let creds: Record<string, unknown>;
+  try {
+    creds = JSON.parse(serviceAccountJson);
+  } catch (e) {
+    throw new Error(`サービスアカウント JSON のパースに失敗しました: ${(e as Error).message}`);
+  }
   const auth = new google.auth.GoogleAuth({
-    credentials: creds,
+    credentials: creds as any,
     scopes: ['https://www.googleapis.com/auth/drive.readonly'],
   });
   return google.drive({ version: 'v3', auth });
@@ -44,7 +49,7 @@ export async function listFolderRecursive(
           fileId: f.id!,
           name: f.name!,
           mimeType: f.mimeType!,
-          modifiedTime: f.modifiedTime!,
+          modifiedTime: f.modifiedTime ?? new Date(0).toISOString(),
           path: parentPath,
         });
       }
