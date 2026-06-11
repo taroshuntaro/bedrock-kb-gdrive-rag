@@ -23,9 +23,12 @@ aws --version   # aws-cli/2.x.x が表示されること
 ```bash
 aws configure sso
 # 対話で以下を入力:
+#   SSO session name (Recommended): 任意のセッション名
 #   SSO start URL    : 組織のアクセスポータル URL(https://xxxx.awsapps.com/start)
 #   SSO region       : Identity Center のリージョン
+#   SSO registration scopes [sso:account:access]: そのままエンター（デフォルト値）
 #   → ブラウザが開くので認可し、アカウントとロールを選択
+#     （ブラウザが自動で開かない場合、開くべき URL がターミナルに表示されるので、それを開く）
 #   CLI default client Region : ap-northeast-1
 #   CLI profile name : 任意(例: kb-dev)
 
@@ -128,12 +131,17 @@ SA は共有されたフォルダ(とそのサブフォルダ)以外を一切参
 npm install
 
 # CDK bootstrap(東京リージョンで初回のみ。アカウント ID は自動取得)
-npx cdk bootstrap aws://$(aws sts get-caller-identity --query Account --output text)/ap-northeast-1
+npx cdk bootstrap aws://$(aws sts get-caller-identity --query Account --output text)/ap-northeast-1 \
+  -c driveFolderId=<手順2で控えたフォルダID>
 
 # デプロイ
 npx cdk deploy -c driveFolderId=<手順2で控えたフォルダID> \
   -c scheduleRate="rate(1 day)" -c scheduleEnabled=true
 ```
+
+> `bootstrap` でも `-c driveFolderId` が要るのは、`bin/app.ts` が全 CDK コマンド共通で
+> このコンテキストを必須にしているため(未指定だと即エラーで停止する)。bootstrap 自体は
+> この値を使わないので、手順 2 のフォルダ ID をそのまま渡せばよい。
 
 CDK context パラメータ:
 
