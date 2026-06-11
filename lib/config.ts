@@ -23,3 +23,9 @@ export const NON_FILTERABLE_METADATA_KEYS = [
   'AMAZON_BEDROCK_TEXT',
   'AMAZON_BEDROCK_METADATA',
 ];
+
+// 回答生成モデル: Claude Haiku 4.5 の日本ジオ・クロスリージョン推論プロファイル。
+// 東京⇔大阪間でルーティングされ、推論処理が日本国内で完結する。
+export const GENERATION_PROFILE_ID = 'jp.anthropic.claude-haiku-4-5-20251001-v1:0';
+// 推論プロファイルが内部で呼び出す基盤モデル ID(IAM の foundation-model 許可の組み立てに使用)
+export const GENERATION_MODEL_ID = 'anthropic.claude-haiku-4-5-20251001-v1:0';
