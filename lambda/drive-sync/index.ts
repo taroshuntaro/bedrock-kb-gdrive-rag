@@ -1,3 +1,10 @@
+// =============================================================================
+// Drive → S3 同期 Lambda のエントリポイント。
+// 1. Secret からサービスアカウント鍵を取得し Drive を列挙
+// 2. S3 の現状と突き合わせて差分を算出
+// 3. アップロード/削除を反映
+// 4. 実反映があり、かつ実行中ジョブが無ければ Bedrock の ingestion を起動
+// =============================================================================
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import {
   S3Client, ListObjectsV2Command, PutObjectCommand, DeleteObjectCommand, HeadObjectCommand,
@@ -9,6 +16,7 @@ import { createDrive, listFolderRecursive, fetchContent, buildKey } from './driv
 import { resolveDownload } from './mime';
 import { diffSync, runUploads, DriveEntry, S3Entry } from './s3-sync';
 
+// 「実行中」とみなす ingestion ジョブのステータス(二重起動防止に使用)
 const ACTIVE_STATUSES = ['STARTING', 'IN_PROGRESS'];
 const ACTIVE_STATUS_SET = new Set(ACTIVE_STATUSES);
 
@@ -18,19 +26,24 @@ export function shouldStartIngestion(hasChanges: boolean, jobStatuses: string[])
   return !jobStatuses.some((s) => ACTIVE_STATUS_SET.has(s));
 }
 
+// AWS SDK クライアント(コールドスタート時に 1 度だけ生成して再利用)
 const region = process.env.AWS_REGION ?? 'ap-northeast-1';
 const s3 = new S3Client({ region });
 const bedrock = new BedrockAgentClient({ region });
 const secrets = new SecretsManagerClient({ region });
 
+// S3 オブジェクトに Drive の更新時刻を保存するメタデータキー(差分判定に使用)
 const MODIFIED_META = 'drive-modified-time';
 
+// Secrets Manager からサービスアカウント JSON 文字列を取得する
 async function getServiceAccountJson(secretArn: string): Promise<string> {
   const out = await secrets.send(new GetSecretValueCommand({ SecretId: secretArn }));
   if (!out.SecretString) throw new Error('SA シークレットが空です');
   return out.SecretString;
 }
 
+// バケット内の全オブジェクトをページングしながら列挙し、各オブジェクトの
+// メタデータから Drive 更新時刻を取り出して S3Entry の一覧を組み立てる
 async function listS3(bucket: string): Promise<S3Entry[]> {
   const entries: S3Entry[] = [];
   let token: string | undefined;
@@ -45,13 +58,16 @@ async function listS3(bucket: string): Promise<S3Entry[]> {
   return entries;
 }
 
+// Lambda ハンドラ本体。Drive と S3 を同期し、必要なら ingestion を起動する。
 export async function handler(): Promise<{ uploaded: number; deleted: number; failed: number; ingestion: boolean }> {
+  // 実行に必要な設定はすべて環境変数(CDK スタックで注入)から取得
   const bucket = process.env.DOCS_BUCKET!;
   const folderId = process.env.DRIVE_FOLDER_ID!;
   const kbId = process.env.KNOWLEDGE_BASE_ID!;
   const dataSourceId = process.env.DATA_SOURCE_ID!;
   const secretArn = process.env.SA_SECRET_ARN!;
 
+  // Drive クライアントを生成し、対象フォルダ配下を再帰列挙
   const drive = createDrive(await getServiceAccountJson(secretArn));
   const remote = await listFolderRecursive(drive, folderId);
 
@@ -64,6 +80,7 @@ export async function handler(): Promise<{ uploaded: number; deleted: number; fa
     driveEntries.push({ fileId: f.fileId, key: buildKey(f, ext), modifiedTime: f.modifiedTime });
   }
 
+  // S3 の現状を取得し、Drive 側の想定一覧と突き合わせて差分を算出
   const s3Entries = await listS3(bucket);
   const diff = diffSync(driveEntries, s3Entries);
 

@@ -1,18 +1,27 @@
+// =============================================================================
+// Drive と S3 の状態を突き合わせて差分を計算し、アップロードを実行する純ロジック層。
+// AWS SDK 呼び出しはコールバック経由で受け取り、ここでは差分判定とエラー隔離に専念する。
+// =============================================================================
+
+// Drive 側の 1 ファイル(想定 S3 キー付き)
 export interface DriveEntry {
   fileId: string;
   key: string;
   modifiedTime: string; // ISO8601
 }
+// S3 側の既存オブジェクト
 export interface S3Entry {
   key: string;
   modifiedTime: string; // S3 メタデータに保存した Drive の modifiedTime
 }
+// 差分計算の結果
 export interface SyncDiff {
-  uploads: DriveEntry[];
-  deletes: string[];
-  hasChanges: boolean;
+  uploads: DriveEntry[]; // 新規 or 更新されたためアップロードすべき項目
+  deletes: string[];     // Drive から消えたため S3 から削除すべきキー
+  hasChanges: boolean;   // 上記いずれかがあるか
 }
 
+// Drive と S3 を比較し、アップロード対象(新規・更新)と削除対象(Drive 側に無い)を算出する
 export function diffSync(drive: DriveEntry[], s3: S3Entry[]): SyncDiff {
   const s3ByKey = new Map(s3.map((e) => [e.key, e]));
   const uploads: DriveEntry[] = [];
@@ -27,10 +36,11 @@ export function diffSync(drive: DriveEntry[], s3: S3Entry[]): SyncDiff {
   return { uploads, deletes, hasChanges: uploads.length > 0 || deletes.length > 0 };
 }
 
+// アップロード一括処理の集計結果
 export interface UploadOutcome {
   uploaded: number; // 実際にアップロードした件数
   skipped: number; // コンテンツが取得できず転送しなかった件数
-  failures: { fileId: string; key: string; error: string }[];
+  failures: { fileId: string; key: string; error: string }[]; // 例外で失敗した項目
 }
 
 // 各アップロードをエラー隔離しながら実行する。

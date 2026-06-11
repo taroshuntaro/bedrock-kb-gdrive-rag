@@ -1,6 +1,11 @@
+// =============================================================================
+// Google Drive API のラッパー層。
+// 認証クライアントの生成・フォルダの再帰列挙・ファイル本文取得・S3 キー生成を担う。
+// =============================================================================
 import { google, drive_v3 } from 'googleapis';
 import { resolveDownload } from './mime';
 
+// 列挙した Drive 上の 1 ファイル
 export interface RemoteFile {
   fileId: string;
   name: string;
@@ -9,6 +14,7 @@ export interface RemoteFile {
   path: string; // フォルダ階層を '/' 連結したもの(末尾にファイル名は含めない)
 }
 
+// サービスアカウント JSON から読み取り専用スコープの Drive クライアントを生成する
 export function createDrive(serviceAccountJson: string): drive_v3.Drive {
   let creds: Record<string, unknown>;
   try {
