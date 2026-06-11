@@ -33,6 +33,8 @@ export function verifySlackSignature(params: {
   const expected = `v0=${createHmac('sha256', signingSecret).update(base).digest('hex')}`;
   const a = Buffer.from(expected);
   const b = Buffer.from(signature);
+  // timingSafeEqual は等長バッファ必須のため長さ不一致は先に弾く。
+  // expected は常に固定長(v0= + hex 64 桁)なので、長さ比較から秘密情報は漏れない。
   if (a.length !== b.length || !timingSafeEqual(a, b)) {
     return { ok: false, reason: '署名不一致' };
   }

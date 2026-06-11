@@ -39,3 +39,19 @@ test('署名ヘッダやタイムスタンプが欠けていれば失敗する',
     timestamp: undefined, signature: undefined, nowEpochSec: NOW,
   })).toEqual({ ok: false, reason: 'ヘッダ不足' });
 });
+
+test('タイムスタンプが 5 分より未来でも失敗する(リプレイ対策)', () => {
+  const body = '{}';
+  const future = NOW + 301;
+  expect(verifySlackSignature({
+    signingSecret: SECRET, body,
+    timestamp: String(future), signature: sign(body, future), nowEpochSec: NOW,
+  })).toEqual({ ok: false, reason: 'タイムスタンプが許容範囲外' });
+});
+
+test('タイムスタンプが数値でなければ失敗する', () => {
+  expect(verifySlackSignature({
+    signingSecret: SECRET, body: '{}',
+    timestamp: 'not-a-number', signature: sign('{}', NOW), nowEpochSec: NOW,
+  })).toEqual({ ok: false, reason: 'タイムスタンプが許容範囲外' });
+});
