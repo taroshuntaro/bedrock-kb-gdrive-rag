@@ -4,6 +4,11 @@ Google Drive をデータソースとする Amazon Bedrock Knowledge Base(S3 Vec
 AWS CDK (TypeScript) で東京リージョン(ap-northeast-1)に構築する。Drive→S3 差分同期と
 取り込み(ingestion)自動起動まで含む。
 
+現時点では検索バックエンドや UI は本リポジトリのスコープ外だが、ナレッジベースさえ作れば
+[Bedrock コンソール(東京)のナレッジベース画面](https://ap-northeast-1.console.aws.amazon.com/bedrock/home?region=ap-northeast-1#/knowledge-bases)
+から対象 KB を開き、「ナレッジベースをテスト」でそのまま検索を試せる
+(ベクトル検索のみの取得と、モデルを選んで回答生成させる RAG の両方が UI 上で実行できる)。
+
 ## 構成
 
 - S3 ドキュメントバケット(同期先 / KB データソース)
@@ -14,12 +19,94 @@ AWS CDK (TypeScript) で東京リージョン(ap-northeast-1)に構築する。D
 ## 前提
 
 - Node.js 20 以上 / npm
-- AWS CLI v2(東京リージョンにデプロイできる認証情報が設定済みであること)
-- GCP アカウント(`gcloud` CLI があると楽だが、コンソール操作でも可)
+- AWS CLI v2(未設定の場合は手順 0 を参照)
+- Google アカウント(Gmail で可。GCP のセットアップはほぼ `gcloud` CLI だけで完結する — 手順 1)
+
+## 0. AWS CLI の準備(未設定の場合)
+
+### 0-1. インストール
+
+```bash
+# Linux x86_64 の例(他 OS は https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+unzip awscliv2.zip && sudo ./aws/install
+aws --version   # aws-cli/2.x.x が表示されること
+```
+
+### 0-2. 認証情報の設定
+
+どちらか一方を行う。
+
+**A. IAM Identity Center(SSO)を使う場合(推奨)**
+
+```bash
+aws configure sso
+# 対話で以下を入力:
+#   SSO start URL    : 組織のアクセスポータル URL(https://xxxx.awsapps.com/start)
+#   SSO region       : Identity Center のリージョン
+#   → ブラウザが開くので認可し、アカウントとロールを選択
+#   CLI default client Region : ap-northeast-1
+#   CLI profile name : 任意(例: kb-dev)
+
+# セッション切れ時の再ログイン
+aws sso login --profile kb-dev
+
+# このプロファイルを既定にしておくと以降の aws / cdk コマンドで指定不要
+export AWS_PROFILE=kb-dev
+```
+
+**B. IAM ユーザーのアクセスキーを使う場合(個人検証向け)**
+
+IAM コンソールでユーザーを作成し、アクセスキーを発行してから:
+
+```bash
+aws configure
+# AWS Access Key ID / Secret Access Key : 発行したキーを入力
+# Default region name                   : ap-northeast-1
+# Default output format                 : json
+```
+
+> 必要な権限について: `cdk bootstrap` は IAM ロールや S3 バケットを作成するため、初回は
+> 広い権限(個人アカウントなら `AdministratorAccess` 相当)を持つプリンシパルで実行するのが
+> 確実。bootstrap 以降のデプロイは CDK が作成したロール経由で行われる。
+
+### 0-3. 設定の確認
+
+```bash
+aws sts get-caller-identity   # アカウント ID と ARN が返れば認証 OK
+aws configure get region      # ap-northeast-1 になっていること
+```
 
 ## 1. GCP: サービスアカウントの作成と Drive API の有効化
 
-`gcloud` を使う場合(`<PROJECT_ID>` は対象の GCP プロジェクト ID):
+Gmail(Google)アカウントがあれば、本手順はほぼ `gcloud` CLI だけで完結する。CLI 外の操作は
+次の 3 つのみ:
+
+1. 初回の GCP 利用規約への同意(コンソールを一度開くだけ)
+2. `gcloud auth login` のブラウザ認可
+3. 手順 2 の Drive フォルダ共有(Drive の Web UI)
+
+請求先アカウント(課金)の設定は不要。Drive API・サービスアカウントとも無償で使える。
+
+### 1-1. gcloud のセットアップとプロジェクト作成(初回のみ)
+
+[gcloud CLI をインストール](https://cloud.google.com/sdk/docs/install)してから:
+
+```bash
+# Gmail アカウントでログイン(ブラウザが開く。リモート環境では --no-launch-browser を付ける)
+gcloud auth login
+
+# プロジェクトを新規作成(<PROJECT_ID> は世界で一意な小文字英数とハイフン。例: my-kb-sync-2026)
+gcloud projects create <PROJECT_ID>
+gcloud config set project <PROJECT_ID>
+```
+
+> 初めて GCP を使うアカウントでは、プロジェクト作成時に
+> `Callers must accept Terms of Service` エラーになることがある。その場合は
+> [console.cloud.google.com](https://console.cloud.google.com) を一度開いて利用規約に
+> 同意してから再実行する。
+
+### 1-2. Drive API の有効化とサービスアカウントの作成
 
 ```bash
 # Drive API を有効化
@@ -59,8 +146,8 @@ SA は共有されたフォルダ(とそのサブフォルダ)以外を一切参
 ```bash
 npm install
 
-# CDK bootstrap(東京リージョンで初回のみ)
-npx cdk bootstrap aws://<アカウントID>/ap-northeast-1
+# CDK bootstrap(東京リージョンで初回のみ。アカウント ID は自動取得)
+npx cdk bootstrap aws://$(aws sts get-caller-identity --query Account --output text)/ap-northeast-1
 
 # デプロイ
 npx cdk deploy -c driveFolderId=<手順2で控えたフォルダID> \
@@ -132,7 +219,9 @@ aws bedrock-agent list-ingestion-jobs --region ap-northeast-1 \
 
 ## 6. 動作確認(検索してみる)
 
-ingestion が COMPLETE になったら、Retrieve API で検索できることを確認する:
+ingestion が COMPLETE になったら検索を試せる。一番手軽なのは Bedrock コンソールの
+対象 KB 画面にある「ナレッジベースをテスト」(冒頭のリンク参照)。CLI で確認する場合は
+Retrieve API を使う:
 
 ```bash
 aws bedrock-agent-runtime retrieve --region ap-northeast-1 \
