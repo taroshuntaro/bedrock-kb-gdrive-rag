@@ -3,3 +3,4 @@ cdk.out/
 dist/
 .cdk.staging/
 *.d.ts
+response.json
