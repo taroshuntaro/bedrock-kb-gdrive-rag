@@ -170,7 +170,14 @@ aws secretsmanager put-secret-value --region ap-northeast-1 \
   --secret-id <SaSecretArn> --secret-string file://service-account.json
 ```
 
-投入後、手元の `service-account.json` は削除してよい。
+> **注意(`file://` を必ず付ける)**: `--secret-string` に `file://` を付けないと、ファイルの
+> 中身ではなくパス文字列そのものがシークレットに保存され、同期 Lambda が
+> 「サービスアカウント JSON のパースに失敗しました」で落ちる。上記はカレントディレクトリに
+> `service-account.json` がある前提。別の場所にある場合は絶対パスを指定するが、その際は
+> `file://` + 先頭の `/` でスラッシュが 3 本になる(例: `file:///home/user/service-account.json`)。
+> 値を入れ間違えても `put-secret-value` を正しく打ち直せば新バージョンで上書きされる。
+
+投入後、手元の `service-account.json` は削除してよい(投入成功を確認してから)。
 
 ### 5-2. 同期 Lambda を手動起動
 
