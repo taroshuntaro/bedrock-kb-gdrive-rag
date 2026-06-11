@@ -1,4 +1,4 @@
-import { diffSync, DriveEntry, S3Entry } from '../lambda/drive-sync/s3-sync';
+import { diffSync, runUploads, DriveEntry, S3Entry } from '../lambda/drive-sync/s3-sync';
 
 const drive: DriveEntry[] = [
   { fileId: 'a', key: 'a/doc.pdf', modifiedTime: '2026-06-10T00:00:00Z' },
@@ -41,4 +41,27 @@ test('変更が一切無ければ uploads も deletes も空', () => {
   expect(r.uploads).toEqual([]);
   expect(r.deletes).toEqual([]);
   expect(r.hasChanges).toBe(false);
+});
+
+const entry = (fileId: string): DriveEntry => ({ fileId, key: `${fileId}/f`, modifiedTime: '2026-06-10T00:00:00Z' });
+
+test('runUploads: 一部が失敗しても残りを継続し、成功数と失敗を記録する', async () => {
+  const called: string[] = [];
+  const r = await runUploads([entry('a'), entry('b'), entry('c')], async (e) => {
+    called.push(e.fileId);
+    if (e.fileId === 'b') throw new Error('boom');
+    return true;
+  });
+  expect(called).toEqual(['a', 'b', 'c']); // 失敗後も後続を処理する
+  expect(r.uploaded).toBe(2);
+  expect(r.skipped).toBe(0);
+  expect(r.failures.map((f) => f.fileId)).toEqual(['b']);
+  expect(r.failures[0].error).toContain('boom');
+});
+
+test('runUploads: コンテンツ無し(false)は skipped に数える', async () => {
+  const r = await runUploads([entry('a'), entry('b')], async (e) => e.fileId === 'a');
+  expect(r.uploaded).toBe(1);
+  expect(r.skipped).toBe(1);
+  expect(r.failures).toEqual([]);
 });

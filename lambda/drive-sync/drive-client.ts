@@ -81,7 +81,9 @@ export async function fetchContent(
 }
 
 // S3 オブジェクトキー: fileId を起点に安定化。export 時は拡張子を付け替え。
+// ファイル名中の '/' は S3 のキー階層を意図せず分割するため '_' に置換する。
 export function buildKey(file: RemoteFile, extension?: string): string {
-  const base = extension ? `${file.name}.${extension}` : file.name;
+  const safeName = file.name.replace(/\//g, '_');
+  const base = extension ? `${safeName}.${extension}` : safeName;
   return `${file.fileId}/${base}`;
 }

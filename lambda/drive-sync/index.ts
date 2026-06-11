@@ -7,14 +7,15 @@ import {
 } from '@aws-sdk/client-bedrock-agent';
 import { createDrive, listFolderRecursive, fetchContent, buildKey } from './drive-client';
 import { resolveDownload } from './mime';
-import { diffSync, DriveEntry, S3Entry } from './s3-sync';
+import { diffSync, runUploads, DriveEntry, S3Entry } from './s3-sync';
 
-const ACTIVE_STATUSES = new Set(['STARTING', 'IN_PROGRESS']);
+const ACTIVE_STATUSES = ['STARTING', 'IN_PROGRESS'];
+const ACTIVE_STATUS_SET = new Set(ACTIVE_STATUSES);
 
 // ガード: 差分があり、実行中(STARTING/IN_PROGRESS)ジョブが無い時のみ true
 export function shouldStartIngestion(hasChanges: boolean, jobStatuses: string[]): boolean {
   if (!hasChanges) return false;
-  return !jobStatuses.some((s) => ACTIVE_STATUSES.has(s));
+  return !jobStatuses.some((s) => ACTIVE_STATUS_SET.has(s));
 }
 
 const region = process.env.AWS_REGION ?? 'ap-northeast-1';
@@ -44,7 +45,7 @@ async function listS3(bucket: string): Promise<S3Entry[]> {
   return entries;
 }
 
-export async function handler(): Promise<{ uploaded: number; deleted: number; ingestion: boolean }> {
+export async function handler(): Promise<{ uploaded: number; deleted: number; failed: number; ingestion: boolean }> {
   const bucket = process.env.DOCS_BUCKET!;
   const folderId = process.env.DRIVE_FOLDER_ID!;
   const kbId = process.env.KNOWLEDGE_BASE_ID!;
@@ -66,27 +67,43 @@ export async function handler(): Promise<{ uploaded: number; deleted: number; in
   const s3Entries = await listS3(bucket);
   const diff = diffSync(driveEntries, s3Entries);
 
-  // アップロード
-  for (const up of diff.uploads) {
+  // アップロード(1 件の失敗で全体を止めず、後続を継続して失敗を記録する)
+  const upload = await runUploads(diff.uploads, async (up) => {
     const file = remote.find((r) => r.fileId === up.fileId)!;
     const content = await fetchContent(drive, file);
-    if (!content) continue;
+    if (!content) return false;
     await s3.send(new PutObjectCommand({
       Bucket: bucket, Key: up.key, Body: content.body,
       Metadata: { [MODIFIED_META]: up.modifiedTime, 'drive-file-id': file.fileId, 'drive-path': encodeURIComponent(file.path) },
     }));
-  }
-  // 削除
-  for (const key of diff.deletes) {
-    await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    return true;
+  });
+  for (const f of upload.failures) {
+    console.error(`アップロード失敗: key=${f.key} fileId=${f.fileId} error=${f.error}`);
   }
 
-  // ingestion ガード(全ページのジョブ状態を収集)
+  // 削除(個別にエラー隔離。1 件の失敗で ingestion をブロックしない)
+  let deleted = 0;
+  for (const key of diff.deletes) {
+    try {
+      await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      deleted += 1;
+    } catch (e) {
+      console.error(`削除失敗: key=${key} error=${(e as Error).message}`);
+    }
+  }
+
+  // 実際に S3 へ反映できた変更だけを ingestion 起動の根拠にする
+  const hasChanges = upload.uploaded > 0 || deleted > 0;
+
+  // ingestion ガード: アクティブ(STARTING/IN_PROGRESS)ジョブのみを絞り込み取得。
+  // STATUS フィルタは複数値を OR で扱うため、履歴が増えても定数コストで判定できる。
   const statuses: string[] = [];
   let jobToken: string | undefined;
   do {
     const jobs = await bedrock.send(new ListIngestionJobsCommand({
       knowledgeBaseId: kbId, dataSourceId, nextToken: jobToken,
+      filters: [{ attribute: 'STATUS', operator: 'EQ', values: ACTIVE_STATUSES }],
     }));
     for (const j of jobs.ingestionJobSummaries ?? []) {
       statuses.push(j.status as string);
@@ -94,9 +111,9 @@ export async function handler(): Promise<{ uploaded: number; deleted: number; in
     jobToken = jobs.nextToken;
   } while (jobToken);
   let ingestion = false;
-  if (shouldStartIngestion(diff.hasChanges, statuses)) {
+  if (shouldStartIngestion(hasChanges, statuses)) {
     await bedrock.send(new StartIngestionJobCommand({ knowledgeBaseId: kbId, dataSourceId }));
     ingestion = true;
   }
-  return { uploaded: diff.uploads.length, deleted: diff.deletes.length, ingestion };
+  return { uploaded: upload.uploaded, deleted, failed: upload.failures.length, ingestion };
 }
