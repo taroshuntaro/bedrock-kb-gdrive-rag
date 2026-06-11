@@ -49,12 +49,15 @@ export class KnowledgeBaseStack extends Stack {
     });
     this.docsBucket = docsBucket;
 
+    // インデックスはバケットを「名前」で参照する(63 文字以内)。vectorBucket.ref は ARN を
+    // 返し 78 文字になって maxLength:63 違反になるため、固定名を両方で共有する。
+    const vectorBucketName = `${NAME_PREFIX}-vectors`;
     const vectorBucket = new s3vectors.CfnVectorBucket(this, 'VectorBucket', {
-      vectorBucketName: `${NAME_PREFIX}-vectors`,
+      vectorBucketName,
     });
 
     const vectorIndex = new s3vectors.CfnIndex(this, 'VectorIndex', {
-      vectorBucketName: vectorBucket.ref,
+      vectorBucketName,
       dimension: EMBEDDING_DIMENSION,
       dataType: VECTOR_DATA_TYPE,
       distanceMetric: VECTOR_DISTANCE_METRIC,
