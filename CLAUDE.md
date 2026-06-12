@@ -119,6 +119,9 @@ Conventional Commits + 日本語説明。
 - **S3 メタデータの非 ASCII 値はエンコードする** — `drive-path` 等は `encodeURIComponent` で格納する
   (`lambda/drive-sync/index.ts`)。生の日本語を入れると PutObject が失敗する。
 - **S3 キーのファイル名内 `/` は `_` に置換する** — キー階層を意図せず分割しないため(`buildKey`)。
+- **RetrieveAndGenerate のカスタムプロンプトには `$output_format_instructions$` を含める** — これが無いと
+  citations の `retrievedReferences` が空になり、参照元の Drive リンクを組み立てられない
+  (`lambda/slack-bot/worker.ts` の `PROMPT_TEMPLATE`)。
 - **`listS3` の HeadObject N+1 は既知課題** — `ListObjectsV2` が独自メタデータを返さないための実装。
   数千ファイル規模で改修する場合はマニフェスト方式を検討(詳細は README「既知の課題」)。
 - **リージョンは ap-northeast-1 固定**、ランタイムは **Node.js 20**。

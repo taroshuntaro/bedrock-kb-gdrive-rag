@@ -17,13 +17,17 @@ export interface WorkerPayload {
   threadTs?: string; // スレッド返信する場合の thread_ts(DM では未指定)
 }
 
-// 回答生成プロンプト($search_results$ は KB が検索結果を埋め込むプレースホルダ)
-const PROMPT_TEMPLATE = `あなたは Google Drive のドキュメントに基づいて質問に答えるアシスタントです。
+// 回答生成プロンプト($search_results$ は KB が検索結果を埋め込むプレースホルダ)。
+// $output_format_instructions$ は引用マーカーの出力指示が展開されるプレースホルダで、
+// これが無いと citations の retrievedReferences が空になり参照元の Drive リンクを組み立てられない。
+export const PROMPT_TEMPLATE = `あなたは Google Drive のドキュメントに基づいて質問に答えるアシスタントです。
 以下の検索結果だけを根拠に、日本語で簡潔に回答してください。
 検索結果に答えが無い場合は、推測せず「ナレッジベースに該当する情報が見つかりませんでした」と答えてください。
 
 検索結果:
 $search_results$
+
+$output_format_instructions$
 `;
 
 // AWS SDK クライアント(コールドスタート時に 1 度だけ生成して再利用)
