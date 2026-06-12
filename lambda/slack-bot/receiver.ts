@@ -3,6 +3,7 @@
 // 署名検証 → イベント判定(純ロジック)→ 応答 Lambda の非同期起動だけを行い、
 // Slack の 3 秒制約内に必ず応答を返す。重い処理は worker.ts に委譲する。
 // 再送はすべて弾く方針のため、起動失敗時も 500 にせずログのみで 200 を返す。
+// なおシークレット取得失敗時は 500 を返し、Slack の再送を自然な回復手段として使う。
 // =============================================================================
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
@@ -62,7 +63,11 @@ export async function handler(event: FunctionUrlEvent): Promise<HttpResponse> {
 
   // イベント判定(challenge / 無視 / 回答)
   const decision = decideEvent(body, event.headers['x-slack-retry-num']);
-  if (decision.action === 'challenge') return { statusCode: 200, body: decision.challenge };
+  // challenge は JSON でラップして返す(Function URL のデフォルト Content-Type が
+  // application/json のため、生文字列ではなく JSON 形式に整合させる)
+  if (decision.action === 'challenge') {
+    return { statusCode: 200, body: JSON.stringify({ challenge: decision.challenge }) };
+  }
   if (decision.action === 'ignore') {
     console.log(`無視: ${decision.reason}`);
     return { statusCode: 200 };
