@@ -69,6 +69,8 @@ export class SlackBotStack extends Stack {
     // --- 受信 Lambda(署名検証 → 応答 Lambda の非同期起動) ---
     // 公開エンドポイントのため reserved concurrency で同時実行を絞り、
     // 万一の大量リクエスト時の課金上限を抑える。
+    // 注意: 予約はアカウントの同時実行プールから確保される。新規アカウント等で
+    // 同時実行クォータが小さいと unreserved 最低 100 を割ってデプロイに失敗しうる。
     const receiverFn = new lambdaNode.NodejsFunction(this, 'SlackReceiverFunction', {
       entry: path.join(__dirname, '../lambda/slack-bot/receiver.ts'),
       handler: 'handler',
