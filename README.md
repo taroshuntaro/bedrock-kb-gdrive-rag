@@ -4,7 +4,7 @@ Google Drive をデータソースとする Amazon Bedrock Knowledge Base(S3 Vec
 AWS CDK (TypeScript) で東京リージョン(ap-northeast-1)に構築する。Drive→S3 差分同期と
 取り込み(ingestion)自動起動まで含む。
 
-現時点では検索バックエンドや UI は本リポジトリのスコープ外だが、ナレッジベースさえ作れば
+検索の試行だけなら、ナレッジベースさえ作れば
 [Bedrock コンソール(東京)のナレッジベース画面](https://ap-northeast-1.console.aws.amazon.com/bedrock/home?region=ap-northeast-1#/knowledge-bases)
 から対象 KB を開き、「ナレッジベースをテスト」でそのまま検索を試せる
 (ベクトル検索のみの取得と、モデルを選んで回答生成させる RAG の両方が UI 上で実行できる)。
@@ -37,6 +37,33 @@ AWS CDK (TypeScript) で東京リージョン(ap-northeast-1)に構築する。D
 4. デプロイ(`cdk bootstrap` + `cdk deploy`)
 5. デプロイ後の設定と初回同期(SA キーのシークレット投入 → Lambda 手動起動)
 6. 動作確認(コンソールの「ナレッジベースをテスト」 / Retrieve API)
+
+## 利用パターン(コンシューマ)
+
+本リポジトリは「コア(KB 基盤)= 必須」+「利用パターン = 選択」の二層構成。
+コアを構築したうえで、KB をどう呼び出して使うかは利用者が選択してデプロイする。
+
+| パターン | スタック | 構築手順 |
+| --- | --- | --- |
+| Slack bot(メンション / DM で質問) | `SlackBotStack` | [docs/slack-setup.md](docs/slack-setup.md) |
+
+### Slack bot
+
+```
+Slack(メンション / DM)
+  → Function URL → 受信 Lambda(署名検証・3 秒以内に応答)
+  → 応答 Lambda(Bedrock RetrieveAndGenerate)
+  → Slack へ回答 + 参照元(Drive リンク)を返信
+```
+
+- 生成モデルはデフォルトで Claude Haiku 4.5(日本ジオの推論プロファイル。
+  東京⇔大阪で処理が完結)。`lib/config.ts` で差し替え可能。
+- 制約: シングルターン(スレッドの文脈は引き継がない)。Slack の at-least-once
+  配送により、ごくまれに二重応答や(非同期起動失敗時の)無応答がありうる。
+
+```bash
+npx cdk deploy SlackBotStack -c driveFolderId=<対象フォルダID>
+```
 
 ## 制約・注意事項
 
@@ -87,4 +114,4 @@ npx cdk destroy -c driveFolderId=<対象フォルダID>  # スタックを削除
 
 ## スコープ外(将来)
 
-検索バックエンド(Retrieve / RetrieveAndGenerate API)、UI、AgentCore 連携。
+AgentCore 連携、マルチターン会話(スレッド文脈の引き継ぎ)、Slack 以外のチャット bot。

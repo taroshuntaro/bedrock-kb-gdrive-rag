@@ -11,7 +11,10 @@
 
 Google Drive をデータソースとする Amazon Bedrock Knowledge Base(S3 Vectors)を
 AWS CDK (TypeScript) で東京リージョン(**ap-northeast-1 固定**)に構築する。
-Drive→S3 の差分同期と ingestion(取り込み)自動起動までを含む。検索 UI/バックエンドはスコープ外。
+Drive→S3 の差分同期と ingestion(取り込み)自動起動までを含む。
+リポジトリは「コア(KB 基盤)= 必須デプロイ」+「利用パターン(Slack bot 等のコンシューマ)
+= スタック単位の選択デプロイ」の二層構成。利用パターンは `lib/<名前>-stack.ts` +
+`lambda/<名前>/` の規約で追加していく(フル再編は依存や言語が衝突するまでしない)。
 
 ## 必須コマンドと完了前の検証
 
@@ -44,6 +47,12 @@ npx cdk deploy -c driveFolderId=<ID>   # デプロイ
 | `lambda/drive-sync/drive-client.ts` | Google Drive API のラッパー(認証・列挙・取得・キー生成) |
 | `lambda/drive-sync/s3-sync.ts` | **純ロジック層**: 差分計算・アップロードのエラー隔離 |
 | `lambda/drive-sync/mime.ts` | **純ロジック層**: MIME からダウンロード方式(direct/export/skip)を判定 |
+| `lib/slack-bot-stack.ts` | Slack bot(利用パターン 1 号)の全リソース定義 |
+| `lambda/slack-bot/receiver.ts` | Slack イベント受信ハンドラ。**SDK 呼び出し層**(Secrets / Lambda) |
+| `lambda/slack-bot/worker.ts` | 応答ハンドラ。**SDK 呼び出し層**(Bedrock / Secrets / Slack API) |
+| `lambda/slack-bot/slack-verify.ts` | **純ロジック層**: Slack 署名・タイムスタンプ検証 |
+| `lambda/slack-bot/slack-event.ts` | **純ロジック層**: challenge/再送/bot 発言の判定・質問抽出 |
+| `lambda/slack-bot/answer-format.ts` | **純ロジック層**: citations → Drive リンク付き回答整形 |
 | `test/*.test.ts` | Jest テスト |
 
 **設計原則: 純ロジックと SDK 呼び出しを分離する。**
