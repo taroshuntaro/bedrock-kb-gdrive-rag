@@ -54,6 +54,8 @@ async function postMessage(channel: string, text: string, threadTs?: string): Pr
     },
     body: JSON.stringify({ channel, text, thread_ts: threadTs }),
   });
+  // Slack 障害時の 5xx は非 JSON ボディのことがあるため、JSON 解析前に HTTP エラーを弾く
+  if (!res.ok) throw new Error(`Slack API HTTP エラー: ${res.status}`);
   const data = (await res.json()) as { ok: boolean; error?: string };
   if (!data.ok) throw new Error(`chat.postMessage 失敗: ${data.error}`);
 }
