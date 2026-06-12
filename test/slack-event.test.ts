@@ -58,3 +58,11 @@ test('メンション除去後に質問が空なら無視する', () => {
 test('壊れた JSON は無視する', () => {
   expect(decideEvent('not-json', undefined)).toMatchObject({ action: 'ignore' });
 });
+
+test('DM のサブタイプ付きメッセージ(編集等)は無視する', () => {
+  const body = JSON.stringify({
+    type: 'event_callback',
+    event: { type: 'message', channel_type: 'im', text: '編集後', channel: 'D1', subtype: 'message_changed' },
+  });
+  expect(decideEvent(body, undefined)).toMatchObject({ action: 'ignore' });
+});

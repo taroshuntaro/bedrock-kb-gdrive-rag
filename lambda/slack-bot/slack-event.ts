@@ -32,7 +32,7 @@ export function decideEvent(rawBody: string, retryNum: string | undefined): Even
   }
 
   const ev = body.event;
-  // bot 自身の発言・編集等のサブタイプ付きメッセージは無視(無限ループ防止)
+  // bot 自身の発言・bot_message や編集等のサブタイプ付きメッセージは無視(無限ループ防止)
   if (ev.bot_id || ev.subtype) return { action: 'ignore', reason: 'bot またはサブタイプ付きメッセージ' };
 
   // チャンネルでのメンション: メンション文字列を除去し、スレッドで返信する
