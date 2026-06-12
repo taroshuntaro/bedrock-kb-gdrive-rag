@@ -13,6 +13,12 @@ interface SourceLink {
 // Slack メッセージに載せる参照元の最大件数
 const MAX_SOURCES = 5;
 
+// Slack mrkdwn のリンク記法 <URL|表示名> 内で特別扱いされる文字を全角に置換する
+// (| はデリミタ、> は閉じマーカーとして解釈されリンクが壊れるため)
+function escapeMrkdwn(text: string): string {
+  return text.replace(/\|/g, '|').replace(/>/g, '>');
+}
+
 // s3://<bucket>/<fileId>/<name> 形式の URI を分解する(形式が合わなければ null)
 function parseS3Uri(uri: string): SourceLink | null {
   const m = uri.match(/^s3:\/\/[^/]+\/([^/]+)\/(.+)$/);
@@ -31,7 +37,7 @@ export function formatAnswer(answer: string, s3Uris: string[]): string {
   }
   if (seen.size === 0) return answer;
   const lines = [...seen.values()].map(
-    (l) => `• <https://drive.google.com/file/d/${l.fileId}/view|${l.name}>`,
+    (l) => `• <https://drive.google.com/file/d/${l.fileId}/view|${escapeMrkdwn(l.name)}>`,
   );
   return `${answer}\n\n*参照元*\n${lines.join('\n')}`;
 }

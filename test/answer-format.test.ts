@@ -25,3 +25,12 @@ test('参照元が無ければ本文のみを返す', () => {
 test('キー階層を持たない不正な S3 URI は読み飛ばす', () => {
   expect(formatAnswer('本文', ['s3://bucket-only'])).toBe('本文');
 });
+
+test('ファイル名に | や > が含まれる場合もリンクが壊れない', () => {
+  const out = formatAnswer('A', ['s3://b/F1/Q1>Q2比較.xlsx', 's3://b/F2/売上|コスト.csv']);
+  expect(out).toContain('>');
+  expect(out).toContain('|');
+  // mrkdwn タグが壊れないこと: リンクが 2 つとも正しく閉じている
+  const links = out.match(/<https:\/\/[^>]+>/g) ?? [];
+  expect(links).toHaveLength(2);
+});
