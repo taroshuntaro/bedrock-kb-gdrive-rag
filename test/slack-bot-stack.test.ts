@@ -1,0 +1,57 @@
+import { App } from 'aws-cdk-lib';
+import { Template, Match } from 'aws-cdk-lib/assertions';
+import { KnowledgeBaseStack } from '../lib/knowledge-base-stack';
+import { SlackBotStack } from '../lib/slack-bot-stack';
+
+function synth() {
+  const app = new App();
+  // KB スタックの出力(KB ID / ARN)をクロススタック参照で受け取る実構成を再現する
+  const kb = new KnowledgeBaseStack(app, 'TestKbStack', {
+    env: { region: 'ap-northeast-1' },
+    driveFolderId: 'folder-123',
+    scheduleRate: 'rate(1 day)',
+    scheduleEnabled: true,
+  });
+  const stack = new SlackBotStack(app, 'TestSlackBotStack', {
+    env: { region: 'ap-northeast-1' },
+    knowledgeBaseId: kb.knowledgeBase.attrKnowledgeBaseId,
+    knowledgeBaseArn: kb.knowledgeBase.attrKnowledgeBaseArn,
+  });
+  return Template.fromStack(stack);
+}
+
+test('受信 Lambda の Function URL が認証なし(署名検証で担保)で公開される', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::Lambda::Url', { AuthType: 'NONE' });
+});
+
+test('受信 Lambda に reserved concurrency が設定されている(コスト暴走ガード)', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::Lambda::Function', Match.objectLike({
+    ReservedConcurrentExecutions: 5,
+  }));
+});
+
+test('応答 Lambda の非同期リトライが 0 に固定されている(二重投稿防止)', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::Lambda::EventInvokeConfig', {
+    MaximumRetryAttempts: 0,
+  });
+});
+
+test('応答 Lambda に KB 検索とモデル呼び出しの権限がある', () => {
+  const t = synth();
+  t.hasResourceProperties('AWS::IAM::Policy', Match.objectLike({
+    PolicyDocument: Match.objectLike({
+      Statement: Match.arrayWith([
+        Match.objectLike({ Action: ['bedrock:Retrieve', 'bedrock:RetrieveAndGenerate'] }),
+        Match.objectLike({ Action: ['bedrock:InvokeModel', 'bedrock:GetInferenceProfile'] }),
+      ]),
+    }),
+  }));
+});
+
+test('Slack 認証情報用のシークレットが 1 つ作られる', () => {
+  const t = synth();
+  t.resourceCountIs('AWS::SecretsManager::Secret', 1);
+});

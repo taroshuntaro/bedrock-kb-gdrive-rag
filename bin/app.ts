@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // =============================================================================
 // CDK アプリのエントリポイント。
-// CLI コンテキスト(-c)からパラメータを受け取り、KnowledgeBaseStack を生成する。
+// CLI コンテキスト(-c)からパラメータを受け取り、
+// コアの KnowledgeBaseStack と利用パターンのスタックを生成する。
 // =============================================================================
 import { App } from 'aws-cdk-lib';
 import { KnowledgeBaseStack } from '../lib/knowledge-base-stack';
+import { SlackBotStack } from '../lib/slack-bot-stack';
 
 const app = new App();
 
@@ -20,9 +22,16 @@ const scheduleRate = app.node.tryGetContext('scheduleRate') ?? 'rate(1 day)';
 const scheduleEnabled = String(app.node.tryGetContext('scheduleEnabled') ?? 'true') === 'true';
 
 // スタックを ap-northeast-1 に生成
-new KnowledgeBaseStack(app, 'KnowledgeBaseStack', {
+const kbStack = new KnowledgeBaseStack(app, 'KnowledgeBaseStack', {
   env: { region: 'ap-northeast-1' },
   driveFolderId,
   scheduleRate,
   scheduleEnabled,
+});
+
+// 利用パターン 1 号: Slack bot(使いたい利用者だけが `cdk deploy SlackBotStack` でデプロイする)
+new SlackBotStack(app, 'SlackBotStack', {
+  env: { region: 'ap-northeast-1' },
+  knowledgeBaseId: kbStack.knowledgeBase.attrKnowledgeBaseId,
+  knowledgeBaseArn: kbStack.knowledgeBase.attrKnowledgeBaseArn,
 });
