@@ -33,7 +33,7 @@ AWS CDK (TypeScript) で東京リージョン(ap-northeast-1)に構築する。D
 0. AWS CLI の準備(未設定の場合)
 1. GCP: サービスアカウントの作成と Drive API の有効化
 2. Drive: 同期対象フォルダの共有とフォルダ ID の確認
-3. AWS: Bedrock モデルアクセスの有効化(初回のみ)
+3. AWS: Bedrock モデルアクセスの確認(通常は操作不要)
 4. デプロイ(`cdk bootstrap` + `cdk deploy`)
 5. デプロイ後の設定と初回同期(SA キーのシークレット投入 → Lambda 手動起動)
 6. 動作確認(コンソールの「ナレッジベースをテスト」 / Retrieve API)
@@ -58,6 +58,10 @@ Slack(メンション / DM)
 
 - 生成モデルはデフォルトで Claude Haiku 4.5(日本ジオの推論プロファイル。
   東京⇔大阪で処理が完結)。`lib/config.ts` で差し替え可能。
+- **アカウントで初めて使う際は Marketplace サブスクリプションの自動確定が必要**
+  (Marketplace 権限を持つアイデンティティで一度 invoke する。確定前は
+  「1 回目だけ成功し以降 `AccessDeniedException`」になりうる)。
+  詳細は [docs/slack-setup.md の手順 7](docs/slack-setup.md)。
 - 制約: シングルターン(スレッドの文脈は引き継がない)。Slack の at-least-once
   配送により、ごくまれに二重応答や(非同期起動失敗時の)無応答がありうる。
 

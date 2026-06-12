@@ -120,10 +120,15 @@ gcloud iam service-accounts keys create service-account.json \
 
 SA は共有されたフォルダ(とそのサブフォルダ)以外を一切参照できないため、これが同期スコープになる。
 
-## 3. AWS: Bedrock モデルアクセスの有効化(初回のみ)
+## 3. AWS: Bedrock モデルアクセスの確認(通常は操作不要)
 
-[Bedrock コンソール(東京)](https://ap-northeast-1.console.aws.amazon.com/bedrock/home?region=ap-northeast-1#/modelaccess)
-の「モデルアクセス」→「モデルアクセスを変更」で **Titan Text Embeddings V2** を有効化する。
+現行の Bedrock に以前の「モデルアクセス画面で事前に有効化」する手順はない
+(全モデルがデフォルトで利用可能)。コア KB が使う **Titan Text Embeddings V2** は
+Amazon 自社モデルで AWS Marketplace のサブスクリプション対象外のため、**追加の操作は不要**。
+
+なお、利用パターン側で Anthropic などのサードパーティモデルを使う場合は、
+初回 invoke 時に Marketplace サブスクリプションの自動確定が必要になる
+(詳細は [slack-setup.md の手順 7](slack-setup.md#7-生成モデルの初回サブスクリプションアカウントで初回のみ))。
 
 ## 4. デプロイ
 
