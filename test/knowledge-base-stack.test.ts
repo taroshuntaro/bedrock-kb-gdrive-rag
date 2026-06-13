@@ -129,3 +129,24 @@ test('主要 ID が CfnOutput される', () => {
     'KnowledgeBaseId', 'DataSourceId', 'DocsBucketName', 'SyncFunctionName', 'SaSecretArn',
   ]));
 });
+
+test('KB サービスロールにリランクモデル限定の権限がある(RetrieveAndGenerate のリランク用)', () => {
+  const app = new App();
+  const stack = new KnowledgeBaseStack(app, 'TestKbRerank', {
+    env: { region: 'ap-northeast-1' },
+    driveFolderId: 'folder-123',
+    scheduleRate: 'rate(1 day)',
+    scheduleEnabled: true,
+  });
+  const t = Template.fromStack(stack);
+  t.hasResourceProperties('AWS::IAM::Policy', Match.objectLike({
+    PolicyDocument: Match.objectLike({
+      Statement: Match.arrayWith([
+        Match.objectLike({
+          Action: ['bedrock:Rerank', 'bedrock:InvokeModel'],
+          Resource: 'arn:aws:bedrock:ap-northeast-1::foundation-model/cohere.rerank-v3-5:0',
+        }),
+      ]),
+    }),
+  }));
+});

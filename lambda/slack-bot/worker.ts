@@ -8,6 +8,7 @@ import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-sec
 import {
   BedrockAgentRuntimeClient, RetrieveAndGenerateCommand,
 } from '@aws-sdk/client-bedrock-agent-runtime';
+import type { KnowledgeBaseRetrievalConfiguration } from '@aws-sdk/client-bedrock-agent-runtime';
 import { formatAnswer } from './answer-format';
 
 // 受信 Lambda から渡される処理依頼
@@ -52,6 +53,39 @@ $search_results$
 $output_format_instructions$
 `;
 
+// 検索取得件数(チャンクが 300 トークンと小さいため文脈量を確保する)
+// リランク無効時: 素のベクトル類似度順をそのまま生成へ渡す
+const RETRIEVAL_RESULTS = 8;
+// リランク有効時: 多めに取得(RERANK_FETCH_RESULTS)→ リランクで上位(RERANK_TOP_N)に絞る
+const RERANK_FETCH_RESULTS = 20;
+// リランク後に残す件数。無効時の取得件数と揃え、生成へ渡す文脈量を一定にする
+const RERANK_TOP_N = 8;
+
+// rerankEnabled に応じて KB の検索設定を組み立てる純関数(副作用なし=モック不要でテスト可能)。
+// 無効時は取得件数のみ、有効時は多めに取得して Cohere リランカーで上位に絞る設定を返す。
+export function buildRetrievalConfiguration(
+  rerankEnabled: boolean,
+  rerankModelArn: string,
+): KnowledgeBaseRetrievalConfiguration {
+  // 無効時: 取得件数のみ指定(リランク設定は付けない)
+  if (!rerankEnabled) {
+    return { vectorSearchConfiguration: { numberOfResults: RETRIEVAL_RESULTS } };
+  }
+  // 有効時: 多めに取得 → Cohere Rerank で numberOfRerankedResults 件に絞る
+  return {
+    vectorSearchConfiguration: {
+      numberOfResults: RERANK_FETCH_RESULTS,
+      rerankingConfiguration: {
+        type: 'BEDROCK_RERANKING_MODEL',
+        bedrockRerankingConfiguration: {
+          numberOfRerankedResults: RERANK_TOP_N,
+          modelConfiguration: { modelArn: rerankModelArn },
+        },
+      },
+    },
+  };
+}
+
 // AWS SDK クライアント(コールドスタート時に 1 度だけ生成して再利用)
 const region = process.env.AWS_REGION ?? 'ap-northeast-1';
 const secrets = new SecretsManagerClient({ region });
@@ -95,6 +129,11 @@ async function queryKnowledgeBase(question: string): Promise<{ answer: string; s
       knowledgeBaseConfiguration: {
         knowledgeBaseId: process.env.KNOWLEDGE_BASE_ID!,
         modelArn: process.env.GENERATION_PROFILE_ARN!,
+        // リランクの有無は環境変数で切り替え(デプロイ時 -c rerank=true/false 由来)
+        retrievalConfiguration: buildRetrievalConfiguration(
+          process.env.RERANK_ENABLED === 'true',
+          process.env.RERANK_MODEL_ARN ?? '',
+        ),
         generationConfiguration: {
           promptTemplate: { textPromptTemplate: PROMPT_TEMPLATE },
         },

@@ -29,3 +29,7 @@ export const NON_FILTERABLE_METADATA_KEYS = [
 export const GENERATION_PROFILE_ID = 'jp.anthropic.claude-haiku-4-5-20251001-v1:0';
 // 推論プロファイルが内部で呼び出す基盤モデル ID(IAM の foundation-model 許可の組み立てに使用)
 export const GENERATION_MODEL_ID = 'anthropic.claude-haiku-4-5-20251001-v1:0';
+
+// リランクモデル: Cohere Rerank 3.5。ap-northeast-1 内で完結するため CRIS 不要。
+// stack の IAM ARN 組み立てに使う。日本語ドキュメントに強い多言語リランカー。
+export const RERANK_MODEL_ID = 'cohere.rerank-v3-5:0';

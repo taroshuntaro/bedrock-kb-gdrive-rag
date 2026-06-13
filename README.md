@@ -67,6 +67,8 @@ Slack(メンション / DM)
 
 ```bash
 npx cdk deploy SlackBotStack -c driveFolderId=<対象フォルダID>
+# リランクを無効にする場合(Cohere Rerank 3.5 のモデルアクセス不要)
+npx cdk deploy SlackBotStack -c driveFolderId=<対象フォルダID> -c rerank=false
 ```
 
 ## 制約・注意事項
