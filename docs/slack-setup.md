@@ -39,6 +39,15 @@ npx cdk deploy SlackBotStack -c driveFolderId=<DriveのフォルダID>
 
 出力された `SlackEventsUrl`(Function URL)を控える。`SlackSecretArn` も出力されるが、手順 4 はシークレット名で実行できるため控えなくてよい。
 
+> **リランクについて**: デフォルトで検索精度向上のためリランク(Cohere Rerank 3.5)が
+> **有効**になっている。有効時は Cohere Rerank 3.5 のモデルサブスクリプション確定が必要(手順 7)。
+> リランクが不要な場合は `-c rerank=false` を付けてデプロイすると無効化できる
+> (この場合 Cohere のサブスクリプションは不要)。
+>
+> ```bash
+> npx cdk deploy SlackBotStack -c driveFolderId=<DriveのフォルダID> -c rerank=false
+> ```
+
 ## 4. シークレットの投入
 
 手順 1〜2 で控えた 2 つの値を Secrets Manager に投入する:
@@ -69,12 +78,27 @@ aws secretsmanager put-secret-value \
 
 ![](./images/slack-setup-006.png)
 
-## 7. 生成モデルの初回サブスクリプション(アカウントで初回のみ)
+## 7. モデルの初回サブスクリプション(アカウントで初回のみ)
 
 現行の Bedrock に以前の「モデルアクセス画面で事前に有効化」する手順はない
-(全モデルがデフォルトで利用可能)。代わりに、Anthropic などサードパーティモデルは
-**アカウントで初めて invoke した時点で AWS Marketplace のサブスクリプションが自動的に開始**される。
-この確定に失敗すると以降の呼び出しが `AccessDeniedException` になるため、動作確認の前に以下を満たしておく。
+(全モデルがデフォルトで利用可能)。代わりに、AWS Marketplace に商品 ID を持つサードパーティ
+モデルは、**アカウントで初めて invoke した時点で Marketplace のサブスクリプション(=モデル合意)が
+自動的に確定**される(呼び出し元に Marketplace 権限がある場合)。この自動確定に失敗すると以降の
+呼び出しが `AccessDeniedException` になるため、動作確認の前に以下を満たしておく。
+
+このスタックで対象になるサードパーティモデルは次の 2 つ。どちらも初回 invoke で自動確定されるが、
+**Anthropic だけは追加でユースケースフォームの提出が必要**(後述の前提条件 2)で、Cohere は不要という違いがある:
+
+- **Claude Haiku 4.5**(`anthropic.claude-haiku-4-5-20251001-v1:0`) — 回答生成。常に必要。
+  自動確定に加え、Anthropic 固有のユースケースフォーム提出が前提。
+- **Cohere Rerank 3.5**(`cohere.rerank-v3-5:0`) — 検索結果のリランク。**リランク有効
+  (デフォルト)でデプロイした場合のみ必要**。フォーム提出は不要で、Marketplace 権限を持つ
+  アイデンティティの初回 invoke で自動確定する。未確定のまま質問するとリランク実行時に
+  `AccessDeniedException` になる。`-c rerank=false` でデプロイした場合はそもそも不要。
+
+> 補足: Amazon 自社モデル(Titan Text Embeddings V2 = コア KB の埋め込み)は Marketplace 商品では
+> なく合意の概念自体が無いため、サブスクリプションも本手順も不要(`list-foundation-model-agreement-offers`
+> は「Agreement not supported」を返す)。
 
 ### 前提条件
 
@@ -93,8 +117,9 @@ aws secretsmanager put-secret-value \
    }
    ```
 
-2. **Anthropic のユースケースフォーム提出(アカウントまたは Organization で 1 回)** —
-   Bedrock コンソールのモデルカタログで Anthropic モデルを選ぶとフォームが出る
+2. **【Anthropic のみ】ユースケースフォーム提出(アカウントまたは Organization で 1 回)** —
+   この要件は **Anthropic モデル固有**(AWS 公式: "Required one-time for Anthropic models only")で、
+   Cohere Rerank には不要。Bedrock コンソールのモデルカタログで Anthropic モデルを選ぶとフォームが出る
    (または `aws bedrock put-use-case-for-model-access`)。提出すると即時で利用可能になる。
 3. アカウントに有効な支払い方法が設定されていること。
 
@@ -106,10 +131,16 @@ aws secretsmanager put-secret-value \
 Lambda のロールに Marketplace 権限を足す必要はない。確定状態は次で確認できる:
 
 ```bash
+# 回答生成モデル(常に必要)
 aws bedrock get-foundation-model-availability \
   --region ap-northeast-1 \
   --model-id anthropic.claude-haiku-4-5-20251001-v1:0
 # "agreementAvailability": {"status": "AVAILABLE"} なら確定済み
+
+# リランクモデル(リランク有効=デフォルト時のみ必要)
+aws bedrock get-foundation-model-availability \
+  --region ap-northeast-1 \
+  --model-id cohere.rerank-v3-5:0
 ```
 
 > **ハマりどころ**: サブスクリプション確定前の猶予期間(最大 15 分)は呼び出しが
