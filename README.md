@@ -125,3 +125,6 @@ npx cdk destroy -c driveFolderId=<対象フォルダID>  # スタックを削除
 ## スコープ外(将来)
 
 AgentCore 連携、マルチターン会話(スレッド文脈の引き継ぎ)、Slack 以外のチャット bot。
+
+今後の発展方向(RAG 精度改善・機能追加・運用基盤の候補一覧)は
+[docs/roadmap.md](docs/roadmap.md) にまとめている。
