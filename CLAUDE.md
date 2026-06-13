@@ -122,6 +122,10 @@ Conventional Commits + 日本語説明。
 - **RetrieveAndGenerate のカスタムプロンプトには `$output_format_instructions$` を含める** — これが無いと
   citations の `retrievedReferences` が空になり、参照元の Drive リンクを組み立てられない
   (`lambda/slack-bot/worker.ts` の `PROMPT_TEMPLATE`)。
+- **`bedrock:Rerank` は IAM の Resource: `*` が必須** — このアクションはリソースレベルのスコープ非対応で、
+  リランクモデル ARN にスコープすると実行時 403(`is not authorized to perform: bedrock:Rerank`)になる。
+  モデルの限定は `bedrock:InvokeModel` をリランクモデル ARN に絞ることで担保する(AWS 公式の正規ポリシー構成)。
+  呼び出し側ロール(`lib/slack-bot-stack.ts`)と KB サービスロール(`lib/knowledge-base-stack.ts`)の両方で同様。
 - **`listS3` の HeadObject N+1 は既知課題** — `ListObjectsV2` が独自メタデータを返さないための実装。
   数千ファイル規模で改修する場合はマニフェスト方式を検討(詳細は README「既知の課題」)。
 - **リージョンは ap-northeast-1 固定**、ランタイムは **Node.js 24**。

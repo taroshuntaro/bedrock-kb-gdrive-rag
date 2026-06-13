@@ -73,10 +73,16 @@ export class SlackBotStack extends Stack {
         `arn:aws:bedrock:*::foundation-model/${GENERATION_MODEL_ID}`,
       ],
     }));
-    // リランク有効時のみ、呼び出し側にもリランクモデル呼び出し権限を付与する(最小権限)。
+    // リランク有効時のみ、呼び出し側にリランク権限を付与する(最小権限)。
+    // bedrock:Rerank はリソースレベルのスコープ非対応で Resource: * が必須(モデル ARN にスコープすると
+    // 403 になる)。モデルの限定は InvokeModel をリランクモデル ARN に絞ることで担保する。
     if (props.rerankEnabled) {
       workerFn.addToRolePolicy(new iam.PolicyStatement({
-        actions: ['bedrock:Rerank', 'bedrock:InvokeModel'],
+        actions: ['bedrock:Rerank'],
+        resources: ['*'],
+      }));
+      workerFn.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['bedrock:InvokeModel'],
         resources: [rerankModelArn],
       }));
     }
