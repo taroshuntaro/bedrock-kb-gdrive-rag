@@ -99,11 +99,16 @@ export class KnowledgeBaseStack extends Stack {
       actions: ['s3vectors:*'],
       resources: [vectorBucket.attrVectorBucketArn, vectorIndex.attrIndexArn],
     }));
-    // RetrieveAndGenerate でリランクを使う場合、KB サービスロールにもリランクモデル
-    // 呼び出し権限が要る。消費者(Slack bot 等)のフラグに依存させると不整合事故に
-    // なるため、リランクモデル1つに限定して無条件付与する(未使用なら no-op)。
+    // RetrieveAndGenerate でリランクを使う場合、KB サービスロールにもリランク権限が要る。
+    // 消費者(Slack bot 等)のフラグに依存させると不整合事故になるため無条件付与する(未使用なら no-op)。
+    // bedrock:Rerank はリソースレベルのスコープ非対応で Resource: * が必須。モデルの限定は
+    // InvokeModel をリランクモデル ARN に絞ることで担保する(AWS 公式の正規ポリシー構成)。
     kbRole.addToPolicy(new iam.PolicyStatement({
-      actions: ['bedrock:Rerank', 'bedrock:InvokeModel'],
+      actions: ['bedrock:Rerank'],
+      resources: ['*'],
+    }));
+    kbRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'],
       resources: [`arn:aws:bedrock:${REGION}::foundation-model/${RERANK_MODEL_ID}`],
     }));
     this.kbRole = kbRole;

@@ -69,11 +69,16 @@ test('リランク有効時、応答 Lambda に RERANK_ENABLED=true とリラン
       Variables: Match.objectLike({ RERANK_ENABLED: 'true', RERANK_MODEL_ARN: Match.anyValue() }),
     }),
   }));
-  // 呼び出し側 IAM(Rerank + InvokeModel)
+  // 呼び出し側 IAM: bedrock:Rerank はリソーススコープ非対応のため Resource: *、
+  // モデル呼び出しは InvokeModel をリランクモデル ARN に限定して付与される。
   t.hasResourceProperties('AWS::IAM::Policy', Match.objectLike({
     PolicyDocument: Match.objectLike({
       Statement: Match.arrayWith([
-        Match.objectLike({ Action: ['bedrock:Rerank', 'bedrock:InvokeModel'] }),
+        Match.objectLike({ Action: 'bedrock:Rerank', Resource: '*' }),
+        Match.objectLike({
+          Action: 'bedrock:InvokeModel',
+          Resource: 'arn:aws:bedrock:ap-northeast-1::foundation-model/cohere.rerank-v3-5:0',
+        }),
       ]),
     }),
   }));

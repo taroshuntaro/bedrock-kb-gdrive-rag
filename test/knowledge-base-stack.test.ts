@@ -130,7 +130,7 @@ test('主要 ID が CfnOutput される', () => {
   ]));
 });
 
-test('KB サービスロールにリランクモデル限定の権限がある(RetrieveAndGenerate のリランク用)', () => {
+test('KB サービスロールにリランク権限がある(Rerank は *、InvokeModel はモデル ARN 限定)', () => {
   const app = new App();
   const stack = new KnowledgeBaseStack(app, 'TestKbRerank', {
     env: { region: 'ap-northeast-1' },
@@ -142,8 +142,11 @@ test('KB サービスロールにリランクモデル限定の権限がある(R
   t.hasResourceProperties('AWS::IAM::Policy', Match.objectLike({
     PolicyDocument: Match.objectLike({
       Statement: Match.arrayWith([
+        // bedrock:Rerank はリソーススコープ非対応のため Resource: *
+        Match.objectLike({ Action: 'bedrock:Rerank', Resource: '*' }),
+        // モデルの限定は InvokeModel をリランクモデル ARN に絞って担保
         Match.objectLike({
-          Action: ['bedrock:Rerank', 'bedrock:InvokeModel'],
+          Action: 'bedrock:InvokeModel',
           Resource: 'arn:aws:bedrock:ap-northeast-1::foundation-model/cohere.rerank-v3-5:0',
         }),
       ]),
