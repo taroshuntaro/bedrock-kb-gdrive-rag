@@ -80,8 +80,10 @@ npx cdk deploy SlackBotStack -c driveFolderId=<対象フォルダID> -c rerank=f
 - **ファイル変換**: Google ドキュメント / スライド → PDF、スプレッドシート → CSV に
   エクスポートして同期する。それ以外の Google ネイティブ形式(フォーム等)はスキップ。
   通常ファイル(PDF / Word / テキスト等)はそのまま同期する。
-- **エクスポート上限**: Drive の export API には約 10 MB の上限があり、超える Google
-  ドキュメント等はエクスポートに失敗する。
+- **エクスポート上限**: Drive の export API には約 10 MB の上限があり、これを超える
+  **Google ドキュメント / スライド / スプレッドシート**はエクスポート(PDF/CSV 変換)に
+  失敗する。なお通常ファイル(PDF / Word / テキスト等)は直接ダウンロードのため、
+  この上限は適用されない(10 MB を超えても同期される)。
 - **取り込み対象形式**: Bedrock KB が解釈できるのは PDF / TXT / MD / HTML / DOC(X) /
   CSV / XLS(X) 等。対象外形式のファイルが S3 にあると ingestion で失敗・スキップ扱いになる。
 - **削除も同期される**: Drive 側で削除(ゴミ箱入り含む)したファイルは S3 からも削除される。
