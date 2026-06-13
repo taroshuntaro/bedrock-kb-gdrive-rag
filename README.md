@@ -49,6 +49,10 @@ AWS CDK (TypeScript) で東京リージョン(ap-northeast-1)に構築する。D
 
 ### Slack bot
 
+![Slack bot 構成図](docs/images/slack-bot-architecture.png)
+
+構成図のソースは [docs/slack-bot-architecture.drawio](docs/slack-bot-architecture.drawio)(draw.io で編集可能)。
+
 ```
 Slack(メンション / DM)
   → Function URL → 受信 Lambda(署名検証・3 秒以内に応答)
