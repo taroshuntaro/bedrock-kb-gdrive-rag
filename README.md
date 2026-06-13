@@ -22,7 +22,7 @@ AWS CDK (TypeScript) で東京リージョン(ap-northeast-1)に構築する。D
 
 ## 前提
 
-- Node.js 20 以上 / npm
+- Node.js 22 以上 / npm(Lambda ランタイムは Node.js 24)
 - AWS CLI v2(未設定の場合は[構築手順の手順 0](docs/setup.md#0-aws-cli-の準備未設定の場合)を参照)
 - Google アカウント(Gmail で可。GCP のセットアップはほぼ `gcloud` CLI だけで完結する)
 

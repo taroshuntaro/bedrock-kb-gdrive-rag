@@ -39,7 +39,7 @@ export class SlackBotStack extends Stack {
     const workerFn = new lambdaNode.NodejsFunction(this, 'SlackWorkerFunction', {
       entry: path.join(__dirname, '../lambda/slack-bot/worker.ts'),
       handler: 'handler',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       timeout: Duration.seconds(60),
       memorySize: 512,
       retryAttempts: 0,
@@ -48,7 +48,7 @@ export class SlackBotStack extends Stack {
         GENERATION_PROFILE_ARN: profileArn,
         SLACK_SECRET_ARN: slackSecret.secretArn,
       },
-      bundling: { minify: true, target: 'node20' },
+      bundling: { minify: true, target: 'node24' },
     });
     slackSecret.grantRead(workerFn);
     // KB の検索・回答生成を許可
@@ -74,7 +74,7 @@ export class SlackBotStack extends Stack {
     const receiverFn = new lambdaNode.NodejsFunction(this, 'SlackReceiverFunction', {
       entry: path.join(__dirname, '../lambda/slack-bot/receiver.ts'),
       handler: 'handler',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       timeout: Duration.seconds(10),
       memorySize: 256,
       reservedConcurrentExecutions: 5,
@@ -82,7 +82,7 @@ export class SlackBotStack extends Stack {
         WORKER_FUNCTION_NAME: workerFn.functionName,
         SLACK_SECRET_ARN: slackSecret.secretArn,
       },
-      bundling: { minify: true, target: 'node20' },
+      bundling: { minify: true, target: 'node24' },
     });
     slackSecret.grantRead(receiverFn);
     workerFn.grantInvoke(receiverFn);

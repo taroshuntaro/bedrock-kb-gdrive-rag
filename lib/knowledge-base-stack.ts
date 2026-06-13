@@ -161,7 +161,7 @@ export class KnowledgeBaseStack extends Stack {
     const syncFn = new lambdaNode.NodejsFunction(this, 'DriveSyncFunction', {
       entry: path.join(__dirname, '../lambda/drive-sync/index.ts'),
       handler: 'handler',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       timeout: Duration.minutes(15),
       memorySize: 1024,
       environment: {
@@ -171,7 +171,7 @@ export class KnowledgeBaseStack extends Stack {
         DATA_SOURCE_ID: dataSource.attrDataSourceId,
         SA_SECRET_ARN: saSecret.secretArn,
       },
-      bundling: { minify: true, target: 'node20' },
+      bundling: { minify: true, target: 'node24' },
     });
 
     // Lambda へ権限付与: 原本 S3 の読み書き / Secret 読み取り / ingestion ジョブ操作

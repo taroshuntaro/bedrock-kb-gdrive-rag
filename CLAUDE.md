@@ -124,6 +124,6 @@ Conventional Commits + 日本語説明。
   (`lambda/slack-bot/worker.ts` の `PROMPT_TEMPLATE`)。
 - **`listS3` の HeadObject N+1 は既知課題** — `ListObjectsV2` が独自メタデータを返さないための実装。
   数千ファイル規模で改修する場合はマニフェスト方式を検討(詳細は README「既知の課題」)。
-- **リージョンは ap-northeast-1 固定**、ランタイムは **Node.js 20**。
+- **リージョンは ap-northeast-1 固定**、ランタイムは **Node.js 24**。
 - そのほかファイル変換・エクスポート上限・削除同期・`cdk destroy` の挙動などの運用上の制約は
   README「制約・注意事項」を参照。
