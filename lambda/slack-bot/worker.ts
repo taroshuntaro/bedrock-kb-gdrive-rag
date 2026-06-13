@@ -128,6 +128,11 @@ async function queryKnowledgeBase(question: string): Promise<{ answer: string; s
       knowledgeBaseConfiguration: {
         knowledgeBaseId: process.env.KNOWLEDGE_BASE_ID!,
         modelArn: process.env.GENERATION_PROFILE_ARN!,
+        // リランクの有無は環境変数で切り替え(デプロイ時 -c rerank=true/false 由来)
+        retrievalConfiguration: buildRetrievalConfiguration(
+          process.env.RERANK_ENABLED === 'true',
+          process.env.RERANK_MODEL_ARN ?? '',
+        ),
         generationConfiguration: {
           promptTemplate: { textPromptTemplate: PROMPT_TEMPLATE },
         },
