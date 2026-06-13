@@ -58,6 +58,7 @@ $output_format_instructions$
 const RETRIEVAL_RESULTS = 8;
 // リランク有効時: 多めに取得(RERANK_FETCH_RESULTS)→ リランクで上位(RERANK_TOP_N)に絞る
 const RERANK_FETCH_RESULTS = 20;
+// リランク後に残す件数。無効時の取得件数と揃え、生成へ渡す文脈量を一定にする
 const RERANK_TOP_N = 8;
 
 // rerankEnabled に応じて KB の検索設定を組み立てる純関数(副作用なし=モック不要でテスト可能)。

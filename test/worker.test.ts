@@ -1,6 +1,7 @@
 // =============================================================================
 // 応答 Lambda(worker)の定数・設定値に関するテスト。
-// SDK 呼び出し自体はモックせず、citations 取得の前提となるプロンプトの形を検証する。
+// SDK 呼び出し自体はモックせず、citations 取得の前提となるプロンプトの形に加え、
+// 検索設定の組み立て(buildRetrievalConfiguration)も検証する。
 // =============================================================================
 import { PROMPT_TEMPLATE, buildRetrievalConfiguration } from '../lambda/slack-bot/worker';
 
