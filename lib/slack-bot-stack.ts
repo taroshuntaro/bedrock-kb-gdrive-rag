@@ -5,12 +5,13 @@ import * as lambdaNode from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as path from 'path';
 import { Construct } from 'constructs';
-import { NAME_PREFIX, GENERATION_PROFILE_ID, GENERATION_MODEL_ID } from './config';
+import { NAME_PREFIX, GENERATION_PROFILE_ID, GENERATION_MODEL_ID, RERANK_MODEL_ID } from './config';
 
 // スタックのデプロイ時パラメータ(コアの KnowledgeBaseStack の出力を受け取る)
 export interface SlackBotStackProps extends StackProps {
   readonly knowledgeBaseId: string;  // 検索対象の Knowledge Base ID
   readonly knowledgeBaseArn: string; // IAM 許可に使う KB の ARN
+  readonly rerankEnabled: boolean;   // リランクの有効・無効(-c rerank 由来)
 }
 
 // =============================================================================
@@ -32,6 +33,9 @@ export class SlackBotStack extends Stack {
     // 回答生成に使う推論プロファイル(日本ジオ CRIS)の ARN
     const profileArn =
       `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${GENERATION_PROFILE_ID}`;
+    // リランクモデル(Cohere Rerank 3.5)の ARN。東京リージョン内で完結。
+    const rerankModelArn =
+      `arn:aws:bedrock:${this.region}::foundation-model/${RERANK_MODEL_ID}`;
 
     // --- 応答 Lambda(KB 検索 → 回答整形 → Slack 投稿) ---
     // 非同期起動の自動リトライは 0 に固定する(失敗時の二重投稿防止。
@@ -47,6 +51,8 @@ export class SlackBotStack extends Stack {
         KNOWLEDGE_BASE_ID: props.knowledgeBaseId,
         GENERATION_PROFILE_ARN: profileArn,
         SLACK_SECRET_ARN: slackSecret.secretArn,
+        RERANK_ENABLED: String(props.rerankEnabled),
+        RERANK_MODEL_ARN: rerankModelArn,
       },
       bundling: { minify: true, target: 'node24' },
     });
@@ -65,6 +71,13 @@ export class SlackBotStack extends Stack {
         `arn:aws:bedrock:*::foundation-model/${GENERATION_MODEL_ID}`,
       ],
     }));
+    // リランク有効時のみ、呼び出し側にもリランクモデル呼び出し権限を付与する(最小権限)。
+    if (props.rerankEnabled) {
+      workerFn.addToRolePolicy(new iam.PolicyStatement({
+        actions: ['bedrock:Rerank', 'bedrock:InvokeModel'],
+        resources: [rerankModelArn],
+      }));
+    }
 
     // --- 受信 Lambda(署名検証 → 応答 Lambda の非同期起動) ---
     // 公開エンドポイントのため reserved concurrency で同時実行を絞り、
