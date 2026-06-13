@@ -19,6 +19,8 @@ import {
   NAME_PREFIX,
   CHUNK_MAX_TOKENS,
   CHUNK_OVERLAP_PERCENT,
+  RERANK_MODEL_ID,
+  REGION,
 } from './config';
 
 // スタックのデプロイ時パラメータ(bin/app.ts のコンテキスト由来)
@@ -96,6 +98,13 @@ export class KnowledgeBaseStack extends Stack {
     kbRole.addToPolicy(new iam.PolicyStatement({
       actions: ['s3vectors:*'],
       resources: [vectorBucket.attrVectorBucketArn, vectorIndex.attrIndexArn],
+    }));
+    // RetrieveAndGenerate でリランクを使う場合、KB サービスロールにもリランクモデル
+    // 呼び出し権限が要る。消費者(Slack bot 等)のフラグに依存させると不整合事故に
+    // なるため、リランクモデル1つに限定して無条件付与する(未使用なら no-op)。
+    kbRole.addToPolicy(new iam.PolicyStatement({
+      actions: ['bedrock:Rerank', 'bedrock:InvokeModel'],
+      resources: [`arn:aws:bedrock:${REGION}::foundation-model/${RERANK_MODEL_ID}`],
     }));
     this.kbRole = kbRole;
 
