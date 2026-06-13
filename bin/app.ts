@@ -20,6 +20,8 @@ if (!driveFolderId) {
 // 同期スケジュール(EventBridge の rate/cron 式)と有効・無効フラグ(任意)
 const scheduleRate = app.node.tryGetContext('scheduleRate') ?? 'rate(1 day)';
 const scheduleEnabled = String(app.node.tryGetContext('scheduleEnabled') ?? 'true') === 'true';
+// リランクの有効・無効(任意・デフォルト有効)。SlackBotStack の検索精度に影響する。
+const rerankEnabled = String(app.node.tryGetContext('rerank') ?? 'true') === 'true';
 
 // スタックを ap-northeast-1 に生成
 const kbStack = new KnowledgeBaseStack(app, 'KnowledgeBaseStack', {
@@ -34,4 +36,5 @@ new SlackBotStack(app, 'SlackBotStack', {
   env: { region: 'ap-northeast-1' },
   knowledgeBaseId: kbStack.knowledgeBase.attrKnowledgeBaseId,
   knowledgeBaseArn: kbStack.knowledgeBase.attrKnowledgeBaseArn,
+  rerankEnabled,
 });
