@@ -88,6 +88,8 @@ test('リランク無効時、RERANK_ENABLED=false でリランク IAM は付与
   }));
   // Rerank アクションを含む IAM ステートメントが存在しないこと
   const policies = t.findResources('AWS::IAM::Policy');
+  // CDK assertions に「該当プロパティが存在しないこと」の否定マッチャが無いため、
+  // ポリシー全体を文字列化して bedrock:Rerank を含まないことを確認する。
   const hasRerank = JSON.stringify(policies).includes('bedrock:Rerank');
   expect(hasRerank).toBe(false);
 });

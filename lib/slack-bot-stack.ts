@@ -51,6 +51,8 @@ export class SlackBotStack extends Stack {
         KNOWLEDGE_BASE_ID: props.knowledgeBaseId,
         GENERATION_PROFILE_ARN: profileArn,
         SLACK_SECRET_ARN: slackSecret.secretArn,
+        // rerankEnabled が false でも両変数を常に渡す。実際にリランクを使うかは
+        // worker 側で RERANK_ENABLED により分岐し、呼び出し権限は下の条件付き IAM でゲートする。
         RERANK_ENABLED: String(props.rerankEnabled),
         RERANK_MODEL_ARN: rerankModelArn,
       },
