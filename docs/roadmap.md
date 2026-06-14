@@ -5,9 +5,9 @@
 設計テーマ候補のリストである。実際に着手する際は個別に
 [docs/superpowers/specs](superpowers/specs) で設計を詰めてから進める。
 
-> 現状(2026-06-14 時点): コア(KB 基盤)+ Slack bot が稼働中。リランク(Cohere Rerank 3.5)
-> 導入済み。既知課題は HeadObject N+1。宣言済みの将来スコープは AgentCore・マルチターン会話・
-> 他チャネル(README「スコープ外(将来)」)。
+> 現状(2026-06-15 時点): コア(KB 基盤)+ Slack bot が稼働中。リランク(Cohere Rerank 3.5)
+> 導入済み。チャンキングを Semantic に移行済み(A-1)。既知課題は HeadObject N+1。
+> 宣言済みの将来スコープは AgentCore・マルチターン会話・他チャネル(README「スコープ外(将来)」)。
 
 ## 推奨ルート
 
@@ -19,10 +19,10 @@
 
 ## A. RAG 精度改善(検索・回答の質)
 
-### A-1. チャンキング戦略の見直し(最有力)
-現在は Fixed-size chunking。Bedrock KB は Semantic / Hierarchical chunking をサポートする。
-文書の意味境界で分割することで、検索ヒット率と回答の文脈整合性が改善しやすい。
-コード変更は `lib/config.ts` 中心で比較的小さい。
+### A-1. チャンキング戦略の見直し(対応済み)
+Semantic chunking に移行済み(`lib/config.ts`)。今後の発展方向として
+Hierarchical chunking への移行や、`maxTokens` / `breakpointPercentileThreshold` の
+チューニングが候補に残る(評価基盤 B-1 を入れてから定量判断が望ましい)。
 
 ### A-2. 埋め込みモデルの再評価
 Titan Text Embeddings V2 と Cohere multilingual 等の日本語性能を比較。

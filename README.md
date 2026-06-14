@@ -15,7 +15,7 @@ AWS CDK (TypeScript) で東京リージョン(ap-northeast-1)に構築する。D
 
 - S3 ドキュメントバケット(同期先 / KB データソース)
 - S3 Vectors バケット + インデックス(1024 次元 / cosine)
-- Bedrock Knowledge Base(Titan Text Embeddings V2)+ S3 データソース(Fixed-size chunking)
+- Bedrock Knowledge Base(Titan Text Embeddings V2)+ S3 データソース(Semantic chunking)
 - Drive 同期 Lambda(Node.js)+ Secrets Manager + EventBridge スケジュール
 
 構成図のソースは [docs/architecture.drawio](docs/architecture.drawio)(draw.io で編集可能)。
@@ -151,7 +151,7 @@ ap-northeast-1・小〜中規模(**数百ファイル / 1 日数十質問程度*
 
 - **質問数**: ③ がそのまま線形に効く。大量利用ならここが主コスト。
 - **取得チャンクサイズ / 件数**: Haiku への入力トークンを増やすので生成コストに直結
-  (`CHUNK_MAX_TOKENS` / 取得件数。`lib/config.ts`)。
+  (`SEMANTIC_MAX_TOKENS` / 取得件数。`lib/config.ts`)。
 - **リランク ON/OFF**: `-c rerank=false` で Cohere の従量を停止できる(精度とのトレードオフ)。
 - **ファイル変更頻度**: ② の Titan 埋め込みコストを左右する(差分のみ課金)。
 
