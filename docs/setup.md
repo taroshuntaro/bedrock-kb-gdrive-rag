@@ -146,8 +146,8 @@ npm install
 npx cdk bootstrap aws://$(aws sts get-caller-identity --query Account --output text)/ap-northeast-1 \
   -c driveFolderId=<手順2で控えたフォルダID>
 
-# デプロイ
-npx cdk deploy -c driveFolderId=<手順2で控えたフォルダID> \
+# デプロイ(複数スタックがあるため --all を付ける)
+npx cdk deploy --all -c driveFolderId=<手順2で控えたフォルダID> \
   -c scheduleRate="rate(1 day)" -c scheduleEnabled=true
 ```
 
@@ -225,6 +225,15 @@ aws bedrock-agent list-ingestion-jobs --region ap-northeast-1 \
   --knowledge-base-id <KnowledgeBaseId> --data-source-id <DataSourceId> \
   --query "ingestionJobSummaries[0].{status:status,stats:statistics}"
 ```
+
+> **ingestion を手動で起動したい場合**: 同期 Lambda は S3 に差分がある場合のみ ingestion を
+> 自動起動する。チャンキング設定の変更やデータソースの再作成など、S3 に差分が無いが
+> 再 ingestion が必要なケースでは以下で直接起動できる:
+>
+> ```bash
+> aws bedrock-agent start-ingestion-job --region ap-northeast-1 \
+>   --knowledge-base-id <KnowledgeBaseId> --data-source-id <DataSourceId>
+> ```
 
 ## 6. 動作確認(検索してみる)
 
