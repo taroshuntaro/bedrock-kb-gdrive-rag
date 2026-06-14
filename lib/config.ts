@@ -14,9 +14,11 @@ export const EMBEDDING_DIMENSION = 1024;
 export const VECTOR_DATA_TYPE = 'float32';
 export const VECTOR_DISTANCE_METRIC = 'cosine';
 
-// ドキュメントのチャンク分割設定(固定トークン長 + オーバーラップ率)
-export const CHUNK_MAX_TOKENS = 300;
-export const CHUNK_OVERLAP_PERCENT = 20;
+// ドキュメントのチャンク分割設定(セマンティック分割)
+export const CHUNK_STRATEGY = 'SEMANTIC' as const;
+export const SEMANTIC_MAX_TOKENS = 300;        // 分割後チャンクの最大トークン数
+export const SEMANTIC_BUFFER_SIZE = 1;          // 境界検出時に前後に含める文数
+export const SEMANTIC_BREAKPOINT_THRESHOLD = 95; // 類似度のパーセンタイル閾値(高いほど大きなチャンク)
 
 // Bedrock KB が S3 Vectors に書き込む本文系メタデータキー(フィルタ非対象にする)
 export const NON_FILTERABLE_METADATA_KEYS = [

@@ -17,8 +17,10 @@ import {
   VECTOR_DISTANCE_METRIC,
   NON_FILTERABLE_METADATA_KEYS,
   NAME_PREFIX,
-  CHUNK_MAX_TOKENS,
-  CHUNK_OVERLAP_PERCENT,
+  CHUNK_STRATEGY,
+  SEMANTIC_MAX_TOKENS,
+  SEMANTIC_BUFFER_SIZE,
+  SEMANTIC_BREAKPOINT_THRESHOLD,
   RERANK_MODEL_ID,
   REGION,
 } from './config';
@@ -152,10 +154,11 @@ export class KnowledgeBaseStack extends Stack {
       },
       vectorIngestionConfiguration: {
         chunkingConfiguration: {
-          chunkingStrategy: 'FIXED_SIZE',
-          fixedSizeChunkingConfiguration: {
-            maxTokens: CHUNK_MAX_TOKENS,
-            overlapPercentage: CHUNK_OVERLAP_PERCENT,
+          chunkingStrategy: CHUNK_STRATEGY,
+          semanticChunkingConfiguration: {
+            maxTokens: SEMANTIC_MAX_TOKENS,
+            bufferSize: SEMANTIC_BUFFER_SIZE,
+            breakpointPercentileThreshold: SEMANTIC_BREAKPOINT_THRESHOLD,
           },
         },
       },
